@@ -26,15 +26,16 @@ const ASSETS = {
     },
     street: {
         lights: ['Light.fbx'],
-        hydrants: ['Hydrant.fbx'],
-        trash: ['Trash_Big.fbx', 'Trash_Bag_1.fbx'],
-        stops: ['Bus_Stop.fbx', 'Tram_Stop.fbx'],
-        misc: ['Newspaper_Stand.fbx']
+        hydrants: [], // Removed Hydrant due to load error
+        trash: [],
+        stops: [], // Removed Bus_Stop due to load error
+        misc: [] // Removed Newspaper_Stand due to load error
     },
     entry: {
-        signs: Array.from({ length: 7 }, (_, i) => `Road_Sign_${i + 1}.fbx`),
-        trafficLights: ['Traffic_Light_1.fbx', 'Traffic_Light_2.fbx'],
-        workSigns: ['Road_Work_Sign_1.fbx', 'Road_Work_Sign_2.fbx']
+        // Road_Signs removed due to load error
+        signs: [],
+        trafficLights: [],
+        workSigns: []
     }
 };
 
@@ -180,7 +181,7 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
 
         // B. Perimeter "Brush" (Dense Bushes Only)
         // "sadece burhslar otoparkın etrafını tam olarka kaplamalı"
-        const brushDensity = 0.4; // Increased density from 1.0 to 0.4 to prevent gaps
+        const brushDensity = 2.7; // Reduced density from 0.4 to 0.8 for optimization
         const natureTexture = '/Texture/TXT_LowPolyEssentials.png';
 
         const placeBrushEdge = (startX: number, startZ: number, endX: number, endZ: number) => {
@@ -191,7 +192,7 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
 
             for (let i = 0; i < count; i++) {
                 const t = i / count;
-                const jitterX = (random() - 0.5) * 1.5; // Reduced jitter slightly
+                const jitterX = (random() - 0.5) * 1.5;
                 const jitterZ = (random() - 0.5) * 1.5;
 
                 const px = startX + dx * t + jitterX;
@@ -199,8 +200,8 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                 const rotY = random() * Math.PI * 2;
 
                 const bIdx = Math.floor(random() * ASSETS.nature.brushes.length);
-                // Adjusted scale to be slightly larger while keeping them small
-                const s = (0.025 + random() * 0.02) * 0.035;
+                // Increased scale slightly to compensate for reduced density
+                const s = (0.025 + random() * 0.02) * 0.045;
 
                 els.push(
                     <AssetInstance
@@ -208,7 +209,7 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                         url={ASSETS.nature.brushes[bIdx]}
                         position={[px, 0, pz]}
                         rotation={[0, rotY, 0]}
-                        scale={s}
+                        scale={0.0022}
                         texturePath={natureTexture}
                     />
                 );
@@ -231,73 +232,24 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
             placeBrushEdge(boundMinX, entryGap / 2, boundMinX, boundMaxZ);
         }
 
+        // D. Street Furniture (Sidewalk) - REMOVED per user request
+        // sidewalkScatter loop deleted.
 
-
-
-        // D. Street Furniture (Sidewalk) - Mixed in or near the brush line?
-        // User didn't specify removing them, but "environment" focus was nature.
-        // Let's keep them sparsely near the brush line (outside).
-        const sidewalkScatter = 15;
-        const sBoundsMinX = boundMinX - 8;
-        const sBoundsMaxX = boundMaxX + 8;
-        const sBoundsMinZ = boundMinZ - 8;
-        const sBoundsMaxZ = boundMaxZ + 8;
-
-        for (let i = 0; i < sidewalkScatter; i++) {
-            const side = Math.floor(random() * 4);
-            let px = 0, pz = 0;
-            if (side === 0) {
-                px = sBoundsMinX + random() * (sBoundsMaxX - sBoundsMinX);
-                pz = sBoundsMinZ;
-            } else if (side === 1) {
-                px = sBoundsMaxX;
-                pz = sBoundsMinZ + random() * (sBoundsMaxZ - sBoundsMinZ);
-            } else if (side === 2) {
-                px = sBoundsMinX + random() * (sBoundsMaxX - sBoundsMinX);
-                pz = sBoundsMaxZ;
-            } else {
-                px = sBoundsMinX;
-                pz = sBoundsMinZ + random() * (sBoundsMaxZ - sBoundsMinZ);
-            }
-
-            const typeRoll = random();
-            let url = ASSETS.street.lights[0];
-            let s = 0.035;
-
-            if (typeRoll < 0.3) {
-                url = ASSETS.street.lights[0];
-            } else if (typeRoll < 0.5) {
-                url = ASSETS.street.hydrants[0];
-            } else if (typeRoll < 0.7) {
-                url = ASSETS.street.trash[Math.floor(random() * ASSETS.street.trash.length)];
-            } else if (typeRoll < 0.8) {
-                url = ASSETS.street.stops[Math.floor(random() * ASSETS.street.stops.length)];
-                s = 0.045;
-            } else {
-                url = ASSETS.street.misc[0];
-            }
-
+        // E. Entry/Exit Logic -> MOVED/REMOVED due to missing assets
+        if (ASSETS.entry.signs.length > 0) {
             els.push(
                 <AssetInstance
-                    key={`prop-${keyCounter++}`}
-                    url={url}
-                    position={[px, 0, pz]}
-                    rotation={[0, random() * Math.PI * 2, 0]}
-                    scale={s}
+                    key="entry-sign-1"
+                    url={ASSETS.entry.signs[0]}
+                    position={[boundMinX - 5, 0, -8]}
+                    rotation={[0, Math.PI / 2, 0]}
+                    scale={0.045}
                 />
             );
         }
 
-        // E. Entry/Exit Logic
-        els.push(
-            <AssetInstance
-                key="entry-sign-1"
-                url={ASSETS.entry.signs[0]}
-                position={[boundMinX - 5, 0, -8]}
-                rotation={[0, Math.PI / 2, 0]}
-                scale={0.045}
-            />
-        );
+        // Traffic lights removed because files are deleted
+        /*
         els.push(
             <AssetInstance
                 key="traffic-light-1"
@@ -307,6 +259,7 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                 scale={0.05}
             />
         );
+        */
 
         // --- Connection Road (Exit/Entry) ---
         // A double lane road extending from the parking entrance (minX) outwards to the left.
