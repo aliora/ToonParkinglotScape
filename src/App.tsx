@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment } from '@react-three/drei';
 import { Leva, useControls } from 'leva';
 import { ParkingLot } from './components/ParkingLot';
+import { EnvironmentWrapper } from './components/EnvironmentWrapper';
 import './App.css';
 
 function Scene() {
@@ -19,6 +20,7 @@ function Scene() {
       <ParkingLot
         capacity={config.capacity}
       />
+      <EnvironmentWrapper capacity={config.capacity} />
 
       <OrbitControls target={[10, 0, 0]} />
       <Sky sunPosition={[100, 20, 100]} />

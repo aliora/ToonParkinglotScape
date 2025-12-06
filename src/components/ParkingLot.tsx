@@ -14,8 +14,8 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
     const slotDepth = 6;
     const laneGap = 8;
     const maxRows = 4;
-    const preferredCols = 10;
-    const gapSize = 4; // Gap width between blocks of 10
+    const preferredCols = 5;
+    const gapSize = 8; // Gap width between blocks of 5, doubled for lights
 
     let rows = 1;
     let cols = capacity;
@@ -27,10 +27,17 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
     }
 
     // Calculate gaps for the full width of cols
-    const numGaps = Math.floor((cols - 1) / 10);
+    // Calculate gaps for the full width of cols
+    const numGaps = Math.floor((cols - 1) / 5);
     const parkingWidth = cols * slotWidth + numGaps * gapSize;
+
+    // Calculate dynamic depth matching EnvironmentWrapper
+    const pairHeight = 2 * slotDepth + laneGap;
+    const totalPairs = Math.ceil(rows / 2);
+    const blockHeight = totalPairs * pairHeight;
+
     const groundWidth = parkingWidth + 40;
-    const groundDepth = 50;
+    const groundDepth = blockHeight + 10;
 
     const groundColor = '#333333';
     const lineColor = '#FFFFFF';
@@ -46,7 +53,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
         const gateEls = [];
         // Place gates at the left entrance.
         // Lane 1 Center Z?
-        // Rows 0 and 1 share a lane. Center Z = (Row0Z + Row1Z) / 2 approx = 0 if centered.
+        // Rows 0 and 1 shares a lane. Center Z = (Row0Z + Row1Z) / 2 approx = 0 if centered.
         // Actually our row calcs:
         // Pair 0 Center = startBlockZ
 
@@ -119,7 +126,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
                 if (currentSlotIndex >= capacity) break;
 
                 // Gap Logic
-                const gapOffset = Math.floor(s / 10) * gapSize;
+                const gapOffset = Math.floor(s / 5) * gapSize;
                 const xPos = startX + s * slotWidth + gapOffset;
 
                 // Visual Lines
@@ -134,7 +141,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
                 );
 
                 // Right line?
-                if (s === cols - 1 || currentSlotIndex === capacity - 1 || (s + 1) % 10 === 0) {
+                if (s === cols - 1 || currentSlotIndex === capacity - 1 || (s + 1) % 5 === 0) {
                     // If next slot is a new block (gap), we need a right line for current block end?
                     // Actually, usually slots share lines.
                     // If there is a gap, the current slot (index 9, 19...) needs a right line.
