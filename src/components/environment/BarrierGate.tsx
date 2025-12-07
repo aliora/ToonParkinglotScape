@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Box } from '@react-three/drei';
 import { Group, Vector3 } from 'three';
@@ -6,8 +6,9 @@ import { useTrafficStore } from '../../stores/useTrafficStore';
 
 interface BarrierGateProps {
     position?: [number, number, number];
-    triggerDistance?: number; // Distance at which barrier opens
-    cooldownDuration?: number; // Cooldown before closing (seconds)
+    triggerDistance?: number; // Distance at which vehicles stop
+    waitTime?: number; // Time vehicle waits before barrier opens (seconds)
+    passTime?: number; // Time barrier stays open after vehicle passes (seconds)
 }
 
 const ARM_CLOSED_ROTATION = 0;
@@ -16,71 +17,79 @@ const ROTATION_SPEED = 3;
 
 export function BarrierGate({
     position = [-14, 0, -5],
-    triggerDistance = 10,
-    cooldownDuration = 3,
+    triggerDistance = 12,
+    waitTime = 1.5,
+    passTime = 2,
 }: BarrierGateProps) {
     const armRef = useRef<Group>(null);
     const vehicles = useTrafficStore((state) => state.vehicles);
+    const barrierBusy = useTrafficStore((state) => state.barrierBusy);
+    const setVehicleWaiting = useTrafficStore((state) => state.setVehicleWaiting);
+    const grantBarrierPass = useTrafficStore((state) => state.grantBarrierPass);
+    const setBarrierBusy = useTrafficStore((state) => state.setBarrierBusy);
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentRotation, setCurrentRotation] = useState(ARM_CLOSED_ROTATION);
-    const [cooldownRemaining, setCooldownRemaining] = useState(0);
-    const cooldownIntervalRef = useRef<number | null>(null);
+    const [processingVehicleId, setProcessingVehicleId] = useState<string | null>(null);
 
-    // Reset cooldown timer
-    const resetCooldown = useCallback(() => {
-        setCooldownRemaining(cooldownDuration);
+    const waitTimerRef = useRef<number | null>(null);
+    const closeTimerRef = useRef<number | null>(null);
 
-        // Clear existing interval
-        if (cooldownIntervalRef.current) {
-            clearInterval(cooldownIntervalRef.current);
-        }
-
-        // Start countdown
-        cooldownIntervalRef.current = window.setInterval(() => {
-            setCooldownRemaining((prev) => {
-                if (prev <= 0.1) {
-                    // Countdown finished, close barrier
-                    if (cooldownIntervalRef.current) {
-                        clearInterval(cooldownIntervalRef.current);
-                        cooldownIntervalRef.current = null;
-                    }
-                    setIsOpen(false);
-                    return 0;
-                }
-                return prev - 0.1; // Decrease by 0.1 second
-            });
-        }, 100); // Update every 100ms
-    }, [cooldownDuration]);
-
-    // Check vehicle proximity
+    // Detect vehicles in waiting zone and mark them as waiting
     useEffect(() => {
         const barrierPos = new Vector3(position[0], position[1], position[2]);
 
-        // Check if any moving vehicle is within trigger distance
-        const vehicleInTriggerZone = vehicles.some((vehicle) => {
-            if (vehicle.state === 'parked') return false;
+        vehicles.forEach((vehicle) => {
+            if (vehicle.state === 'parked' || vehicle.canPassBarrier) return;
 
             const vehiclePos = vehicle.currentPosition;
-            if (!vehiclePos) return false;
+            if (!vehiclePos) return;
 
             const distance = barrierPos.distanceTo(vehiclePos);
-            return distance < triggerDistance;
-        });
 
-        if (vehicleInTriggerZone) {
-            // Open the barrier and reset/start cooldown
-            setIsOpen(true);
-            resetCooldown();
+            // If vehicle is in trigger zone and not already waiting
+            if (distance < triggerDistance && !vehicle.isWaitingAtBarrier && !vehicle.canPassBarrier) {
+                setVehicleWaiting(vehicle.id, true);
+            }
+        });
+    }, [vehicles, position, triggerDistance, setVehicleWaiting]);
+
+    // Process waiting vehicles queue
+    useEffect(() => {
+        // If already processing, skip
+        if (processingVehicleId || barrierBusy) return;
+
+        // Find first waiting vehicle manually (avoid stale closure)
+        const waitingVehicle = vehicles.find((v) => v.isWaitingAtBarrier && !v.canPassBarrier);
+
+        if (waitingVehicle) {
+            console.log('Processing vehicle:', waitingVehicle.id);
+            setProcessingVehicleId(waitingVehicle.id);
+            setBarrierBusy(true);
+
+            // Wait before opening barrier
+            waitTimerRef.current = window.setTimeout(() => {
+                console.log('Opening barrier for:', waitingVehicle.id);
+                // Open barrier and grant pass
+                setIsOpen(true);
+                grantBarrierPass(waitingVehicle.id);
+
+                // Set timer to close after vehicle passes
+                closeTimerRef.current = window.setTimeout(() => {
+                    console.log('Closing barrier');
+                    setIsOpen(false);
+                    setBarrierBusy(false);
+                    setProcessingVehicleId(null);
+                }, passTime * 1000);
+            }, waitTime * 1000);
         }
-    }, [vehicles, position, triggerDistance, resetCooldown]);
+    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, setBarrierBusy, waitTime, passTime]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            if (cooldownIntervalRef.current) {
-                clearInterval(cooldownIntervalRef.current);
-            }
+            if (waitTimerRef.current) clearTimeout(waitTimerRef.current);
+            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
         };
     }, []);
 

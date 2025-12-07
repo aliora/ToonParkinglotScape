@@ -53,13 +53,13 @@ const colorSwatchStyles = (color: string): React.CSSProperties => ({
 export function ControlPanel() {
     const vehicles = useTrafficStore((state) => state.vehicles);
     const parkingSpots = useTrafficStore((state) => state.parkingSpots);
-    const spawnVehicle = useTrafficStore((state) => state.spawnVehicle);
+    const queueSpawn = useTrafficStore((state) => state.queueSpawn);
     const removeVehicle = useTrafficStore((state) => state.removeVehicle);
 
     const availableSpots = parkingSpots.filter((s) => !s.occupied).length;
 
     const handleSpawn = (type: VehicleType) => {
-        spawnVehicle(type);
+        queueSpawn(type);
     };
 
     const getVehicleTypeName = (type: VehicleType): string => {
