@@ -6,13 +6,13 @@ import { useTrafficStore } from '../../stores/useTrafficStore';
 
 interface BarrierGateProps {
     position?: [number, number, number];
-    triggerDistance?: number; // Distance at which vehicles stop
-    waitTime?: number; // Time vehicle waits before barrier opens (seconds)
-    passTime?: number; // Time barrier stays open after vehicle passes (seconds)
+    triggerDistance?: number;
+    waitTime?: number;
+    passTime?: number;
 }
 
 const ARM_CLOSED_ROTATION = 0;
-const ARM_OPEN_ROTATION = -Math.PI / 2; // 90 degrees up
+const ARM_OPEN_ROTATION = -Math.PI / 2;
 const ROTATION_SPEED = 3;
 
 export function BarrierGate({
@@ -26,7 +26,11 @@ export function BarrierGate({
     const barrierBusy = useTrafficStore((state) => state.barrierBusy);
     const setVehicleWaiting = useTrafficStore((state) => state.setVehicleWaiting);
     const grantBarrierPass = useTrafficStore((state) => state.grantBarrierPass);
+    const grantExitPass = useTrafficStore((state) => state.grantExitPass);
+    const releaseExitGate = useTrafficStore((state) => state.releaseExitGate);
     const setBarrierBusy = useTrafficStore((state) => state.setBarrierBusy);
+    const hasEntryVehicles = useTrafficStore((state) => state.hasEntryVehicles);
+    const advanceExitQueue = useTrafficStore((state) => state.advanceExitQueue);
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentRotation, setCurrentRotation] = useState(ARM_CLOSED_ROTATION);
@@ -47,45 +51,77 @@ export function BarrierGate({
 
             const distance = barrierPos.distanceTo(vehiclePos);
 
-            // If vehicle is in trigger zone and not already waiting
             if (distance < triggerDistance && !vehicle.isWaitingAtBarrier && !vehicle.canPassBarrier) {
                 setVehicleWaiting(vehicle.id, true);
             }
         });
     }, [vehicles, position, triggerDistance, setVehicleWaiting]);
 
-    // Process waiting vehicles queue
+    // Process entry and exit queues
     useEffect(() => {
-        // If already processing, skip
         if (processingVehicleId || barrierBusy) return;
 
-        // Find first waiting vehicle manually (avoid stale closure)
-        const waitingVehicle = vehicles.find((v) => v.isWaitingAtBarrier && !v.canPassBarrier);
+        // Priority: Entry vehicles first
+        const entryWaiting = vehicles.find(
+            (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier && !v.isExiting
+        );
 
-        if (waitingVehicle) {
-            console.log('Processing vehicle:', waitingVehicle.id);
-            setProcessingVehicleId(waitingVehicle.id);
-            setBarrierBusy(true);
+        if (entryWaiting) {
+            setProcessingVehicleId(entryWaiting.id);
 
-            // Wait before opening barrier
             waitTimerRef.current = window.setTimeout(() => {
-                console.log('Opening barrier for:', waitingVehicle.id);
-                // Open barrier and grant pass
                 setIsOpen(true);
-                grantBarrierPass(waitingVehicle.id);
+                grantBarrierPass(entryWaiting.id);
 
-                // Set timer to close after vehicle passes
                 closeTimerRef.current = window.setTimeout(() => {
-                    console.log('Closing barrier');
                     setIsOpen(false);
                     setBarrierBusy(false);
                     setProcessingVehicleId(null);
                 }, passTime * 1000);
             }, waitTime * 1000);
+            return;
         }
-    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, setBarrierBusy, waitTime, passTime]);
 
-    // Cleanup on unmount
+        // No entry vehicles - process exit from position 5 only
+        if (!hasEntryVehicles()) {
+            // Only process exit from position 5 (center)
+            const exitWaiting = vehicles.find(
+                (v) =>
+                    v.isExiting &&
+                    v.exitQueuePosition === 5 &&
+                    !v.canPassBarrier // Removed isWaitingAtBarrier check to allow non-stop flow
+            );
+
+            if (exitWaiting) {
+                setProcessingVehicleId(exitWaiting.id);
+
+                // Immediate open for continuous flow
+                setIsOpen(true);
+                grantExitPass(exitWaiting.id);
+
+                closeTimerRef.current = window.setTimeout(() => {
+                    setIsOpen(false);
+                    setBarrierBusy(false);
+                    // Free position 5 only after barrier closes/vehicle exits
+                    releaseExitGate(exitWaiting.id);
+                    setProcessingVehicleId(null);
+                    // attempt to advance next vehicle
+                    advanceExitQueue();
+                }, passTime * 1000);
+            }
+        }
+    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, grantExitPass, setBarrierBusy, hasEntryVehicles, advanceExitQueue, waitTime, passTime]);
+
+    // Separate interval for advancing exit queue to center
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            // advanceExitQueue handles its own condition checks
+            advanceExitQueue();
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [advanceExitQueue]);
+
     useEffect(() => {
         return () => {
             if (waitTimerRef.current) clearTimeout(waitTimerRef.current);
@@ -93,7 +129,6 @@ export function BarrierGate({
         };
     }, []);
 
-    // Animate arm rotation
     useFrame((_, delta) => {
         if (!armRef.current) return;
 
@@ -111,35 +146,28 @@ export function BarrierGate({
 
     return (
         <group position={position}>
-            {/* Barrier Body - Main housing */}
             <Box position={[0, 1.5, 0]} args={[1.5, 3, 1.5]} castShadow>
                 <meshStandardMaterial color="#2c3e50" />
             </Box>
 
-            {/* Top cap */}
             <Box position={[0, 3.2, 0]} args={[1.8, 0.4, 1.8]} castShadow>
                 <meshStandardMaterial color="#e74c3c" />
             </Box>
 
-            {/* Barrier Arm Pivot Point */}
             <group ref={armRef} position={[0, 2.8, 0.5]}>
-                {/* Arm base (pivot) */}
                 <Box position={[0, 0, 0]} args={[0.3, 0.3, 0.3]}>
                     <meshStandardMaterial color="#f1c40f" />
                 </Box>
 
-                {/* Arm bar - extends in +Z direction (longer arm) */}
                 <Box position={[0, 0, 6]} args={[0.15, 0.15, 12]}>
                     <meshStandardMaterial color="#e74c3c" />
                 </Box>
 
-                {/* Arm tip (reflector) */}
                 <Box position={[0, 0, 12]} args={[0.25, 0.25, 0.5]}>
                     <meshStandardMaterial color="#f39c12" emissive="#f39c12" emissiveIntensity={0.3} />
                 </Box>
             </group>
 
-            {/* Side pole at end of arm travel */}
             <Box position={[0, 0.5, 12]} args={[0.3, 1, 0.3]}>
                 <meshStandardMaterial color="#7f8c8d" />
             </Box>
