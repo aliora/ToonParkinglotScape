@@ -1,10 +1,12 @@
 
-import React from 'react';
+
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { Leva, useControls } from 'leva';
 import { ParkingLot } from './components/ParkingLot';
 import { EnvironmentWrapper } from './components/EnvironmentWrapper';
+import { VehicleManager } from './components/vehicles/VehicleManager';
+import { ControlPanel } from './components/ui/ControlPanel';
 
 import './App.css';
 
@@ -64,10 +66,9 @@ function Scene() {
         shadow-camera-bottom={-50}
       />
 
-      <ParkingLot
-        capacity={config.capacity}
-      />
+      <ParkingLot capacity={config.capacity} />
       <EnvironmentWrapper capacity={config.capacity} />
+      <VehicleManager capacity={config.capacity} />
 
       <OrbitControls target={[10, 0, 0]} />
 
@@ -96,6 +97,7 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <Leva collapsed={false} />
+      <ControlPanel />
       <Canvas shadows camera={{ position: [-10, 30, 40], fov: 50 }}>
         <Scene />
       </Canvas>
