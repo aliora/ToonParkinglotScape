@@ -9,7 +9,7 @@ export const DIMENSIONS = {
     BUILDING_GAP: 20,
     STREET_OFFSET: 30,
     PARKING_EXCLUSION_BUFFER: 5, // No random objects spawn within this distance of parking area
-    BUILDING_EXCLUSION_BUFFER: 5, // Buffer distance from buildings
+    BUILDING_EXCLUSION_BUFFER: 10, // Buffer distance from buildings
 };
 
 export const COLORS = {
@@ -40,7 +40,7 @@ export const ASSETS = {
         trees: ['Tree2.fbx', 'Tree.fbx', 'dead_tree.fbx'],
         treeConfig: {
             globalScaleMultiplier: 0.1,  // Multiply all scatter scales by this value
-            scale: 0.003,                // Base scale
+            scale: 0.3,                // Base scale
             scaleVariation: 0.4,        // Random scale variation (0-1)
             rotation: [0, 0, 0] as [number, number, number],
             randomRotation: true,       // Enable random Y rotation
@@ -48,7 +48,7 @@ export const ASSETS = {
             yOffset: 0,                 // Y offset
         },
         rocks: [
-            'Rock_02.fbx', 'Rock_04_1__5_.fbx', 'Rock_04.fbx', 'Rock_05.fbx'
+            'Rock_02.fbx', 'Rock_04_1__5_.fbx', 'Rock_04.fbx', 'Rock_05.fbx', 'bush.fbx'
         ],
         bushes: ['bush.fbx'],
         bushConfig: {
@@ -124,6 +124,20 @@ export const ASSETS = {
         { url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false },
         { url: 'Rock_02.fbx', scale: 0.015, preserveMaterials: false },
     ],
+    scatterGroups: {
+        greenery: [
+            { url: 'Tree2.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 },
+            { url: 'Tree.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 },
+            { url: 'bush.fbx', scale: 0.008, preserveMaterials: false, type: 'bush', randomScaleMin: 0.7, randomScaleMax: 1.6, collisionRadius: 0.8 },
+        ],
+        dead: [
+            { url: 'dead_tree.fbx', scale: 0.02, preserveMaterials: false, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 1.5 },
+            { url: 'Rock_05.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 },
+            { url: 'Rock_04.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3.5 },
+            { url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 },
+            { url: 'Rock_02.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3 },
+        ]
+    },
     clouds: [
         'Cloud_1.fbx',
         'Cloud_2.fbx',
