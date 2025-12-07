@@ -36,7 +36,22 @@ const ASSETS = {
         signs: [],
         trafficLights: [],
         workSigns: []
-    }
+    },
+    scatter: [
+        { url: 'Tree_04.fbx', scale: 0.045 },
+        { url: 'Tree_05__4_.fbx', scale: 0.05 },
+        { url: 'Tree_04__1_.fbx', scale: 0.045 },
+        { url: 'Tree_03__1_.fbx', scale: 0.04 },
+        { url: 'Tree_02__1_.fbx', scale: 0.04 },
+        { url: 'Tree_01__23_.fbx', scale: 0.045 },
+        { url: 'Trash_Small.fbx', scale: 0.015 },
+        { url: 'root_tree.fbx', scale: 0.025 },
+        { url: 'Rock_05.fbx', scale: 0.02 },
+        { url: 'Rock_04.fbx', scale: 0.015 },
+        { url: 'Rock_04_1__5_.fbx', scale: 0.02 },
+        { url: 'Rock_02.fbx', scale: 0.015 },
+        { url: 'dead_tree.fbx', scale: 0.035 }
+    ]
 };
 
 const BASE_PATH = '/CityEnvironment/';
@@ -132,8 +147,8 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
         const random = () => Math.random();
 
         // A. Background Buildings (Dense Neighborhood)
-        const buildingGap = 18;
-        const streetOffset = 25;
+        const buildingGap = 20;
+        const streetOffset = 30; // Increased from 25 to 50 to move buildings further away
 
         const bMinX = boundMinX - streetOffset;
         const bMaxX = boundMaxX + streetOffset;
@@ -356,6 +371,67 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                     );
                 }
             }
+        }
+
+        // G. Random Green Area Scatter
+        // Defines a specific spawn zone between the Parking Lot and the Buildings.
+        // Buildings are at offset 30. We want to spawn between the parking edge and the buildings.
+        const buildingLineOffset = 30; // Matches the building streetOffset
+        const buildingBuffer = 5; // Keep away from the building walls
+        const parkingBuffer = 2; // Keep away from the parking lot asphalt
+
+        const spawnOffset = buildingLineOffset - buildingBuffer;
+
+        const gMinX = boundMinX - spawnOffset;
+        const gMaxX = boundMaxX + spawnOffset;
+        const gMinZ = boundMinZ - spawnOffset;
+        const gMaxZ = boundMaxZ + spawnOffset;
+
+        // Increased count to fill the "ring" better
+        const scatterCount = 60;
+
+        for (let i = 0; i < scatterCount; i++) {
+            // Generate point within the outer bounds (Building Inner Perimeter)
+            const px = gMinX + random() * (gMaxX - gMinX);
+            const pz = gMinZ + random() * (gMaxZ - gMinZ);
+
+            // Exclusion Zone: Strictly remove points inside the Parking Lot (+ buffer)
+            const pMinX = boundMinX - parkingBuffer;
+            const pMaxX = boundMaxX + parkingBuffer;
+            const pMinZ = boundMinZ - parkingBuffer;
+            const pMaxZ = boundMaxZ + parkingBuffer;
+
+            if (px > pMinX && px < pMaxX && pz > pMinZ && pz < pMaxZ) {
+                // Point is inside the parking lot area, skip it
+                continue;
+            }
+
+            // Exclusion Zone 2: Entrance Road
+            // Road extends from roughly X=-50 to X=-15, Z=-7 to Z=7
+            const rMinX = -55;
+            const rMaxX = -10;
+            const rMinZ = -10;
+            const rMaxZ = 10;
+
+            if (px > rMinX && px < rMaxX && pz > rMinZ && pz < rMaxZ) {
+                // Point is on the road, skip it
+                continue;
+            }
+
+            const item = ASSETS.scatter[Math.floor(random() * ASSETS.scatter.length)];
+            const rotY = random() * Math.PI * 2;
+            const s = item.scale * (0.01 + random() * 0.004); // Kept user's custom scale logic
+
+            els.push(
+                <AssetInstance
+                    key={`scatter-${keyCounter++}`}
+                    url={item.url}
+                    position={[px, 0, pz]}
+                    rotation={[0, rotY, 0]}
+                    scale={s}
+                    texturePath={natureTexture}
+                />
+            );
         }
 
         return els;

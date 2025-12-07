@@ -42,51 +42,27 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
     const groundColor = '#333333';
     const lineColor = '#FFFFFF';
 
-    // Gate Logic
-    // <= 2 Rows -> 1 Gate (covering the single lane gap)
-    // > 2 Rows -> 2 Gates? Or just a wider gate?
-    // Let's assume > 2 rows implies 2 separate lanes logic effectively or just more traffic.
-    // The user asked for "tek veya iki kapı olmalı".
-    const gateCount = rows > 2 ? 2 : 1;
-
     const gates = useMemo(() => {
-        const gateEls = [];
-        // Place gates at the left entrance.
-        // Lane 1 Center Z?
-        // Rows 0 and 1 shares a lane. Center Z = (Row0Z + Row1Z) / 2 approx = 0 if centered.
-        // Actually our row calcs:
-        // Pair 0 Center = startBlockZ
-
-        // We need the center of the first lane pair, and if gateCount=2, center of second lane pair.
-
-        const pairHeight = 2 * slotDepth + laneGap;
-        const totalPairs = Math.ceil(rows / 2);
-        const blockHeight = totalPairs * pairHeight;
-        const startBlockZ = -(blockHeight / 2) + pairHeight / 2;
-
-        for (let g = 0; g < gateCount; g++) {
-            // Gate for pair g
-            // Center Z of this lane pair
-            const laneZ = startBlockZ + g * pairHeight;
-
-            gateEls.push(
-                <group key={`gate-${g}`} position={[0, 0, laneZ]}>
-                    {/* Booth */}
-                    <Box position={[0, 1.5, 4]} args={[2, 3, 2]} castShadow>
-                        <meshStandardMaterial color="#4444FF" />
-                    </Box>
-                    {/* Barrier Arm */}
-                    <Box position={[0, 1, 0]} args={[0.5, 2, 0.5]}>
-                        <meshStandardMaterial color="#FFFF00" />
-                    </Box>
-                    <Box position={[0, 2, 0]} args={[0.2, 0.2, 6]} rotation={[0, 0, 0]}>
-                        <meshStandardMaterial color="#FF0000" />
-                    </Box>
-                </group>
-            );
-        }
-        return gateEls;
-    }, [gateCount, rows, slotDepth, laneGap]);
+        // Single gate placed at the entrance road connection
+        // Road is centered at Z=0 and starts around X=-15
+        return [
+            <group key="gate-main" position={[-14, 0, 0]}>
+                {/* Booth - moved to Z=9 to be clearly off the 14-width road (which is -7 to 7) */}
+                <Box position={[0, 1.5, 9]} args={[2, 3, 2]} castShadow>
+                    <meshStandardMaterial color="#4444FF" />
+                </Box>
+                {/* Barrier Stand */}
+                <Box position={[0, 1, 7.5]} args={[0.5, 2, 0.5]}>
+                    <meshStandardMaterial color="#FFFF00" />
+                </Box>
+                {/* Barrier Arm - extends from 7.5 inwards. Length 8 covers 3.5 to 11.5? No. Center it. */}
+                {/* If center is 3.5. Length 8 -> -0.5 to 7.5. Covers right lane effectively. */}
+                <Box position={[0, 2, 3.5]} args={[0.2, 0.2, 8]} rotation={[0, 0, 0]}>
+                    <meshStandardMaterial color="#FF0000" />
+                </Box>
+            </group>
+        ];
+    }, []);
 
 
     const lines = useMemo(() => {
@@ -111,7 +87,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({
 
             const backLineZ = isEven ? zPos - slotDepth / 2 : zPos + slotDepth / 2;
 
-            let slotsPlaced = 0;
+
 
             for (let s = 0; s < cols; s++) {
                 // Check capacity limit per row distribution approximation? 
