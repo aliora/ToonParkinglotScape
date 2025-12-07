@@ -19,6 +19,7 @@ export interface VehicleInstance extends IVehicleData {
     targetPosition: Vector3;
     spotId: string;
     startPosition: Vector3;
+    currentPosition: Vector3; // Real-time position for collision detection
     waypoints: Vector3[]; // Manhattan-style path waypoints
 }
 
@@ -36,10 +37,11 @@ interface TrafficState {
     spawnVehicle: (type?: VehicleType) => VehicleInstance | null;
     removeVehicle: (id: string) => void;
     updateVehicleState: (id: string, state: 'moving' | 'parked') => void;
+    updateVehiclePosition: (id: string, position: Vector3) => void;
 }
 
 // Barrier spawn point (where vehicles enter - further back on road)
-const SPAWN_POINT = new Vector3(-35, 0, 0);
+const SPAWN_POINT = new Vector3(-45, 0, 0);
 // Entry point onto the main parking area
 const ENTRY_POINT = new Vector3(-5, 0, 0);
 // Junction point where vehicles choose upper or lower lane
@@ -124,6 +126,7 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
             targetPosition: nearestSpot.position.clone(),
             spotId: nearestSpot.id,
             startPosition: SPAWN_POINT.clone(),
+            currentPosition: SPAWN_POINT.clone(),
             waypoints,
         };
 
@@ -156,6 +159,14 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         set((state) => ({
             vehicles: state.vehicles.map((v) =>
                 v.id === id ? { ...v, state: newState } : v
+            ),
+        }));
+    },
+
+    updateVehiclePosition: (id: string, position: Vector3) => {
+        set((state) => ({
+            vehicles: state.vehicles.map((v) =>
+                v.id === id ? { ...v, currentPosition: position.clone() } : v
             ),
         }));
     },

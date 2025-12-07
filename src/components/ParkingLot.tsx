@@ -1,9 +1,10 @@
 
-import React, { useMemo, Suspense } from 'react';
+import { useMemo, Suspense } from 'react';
 import { Plane, Box } from '@react-three/drei';
 import { useParkingLayout } from '../hooks/useParkingLayout';
 import { DIMENSIONS, COLORS, PARKING_FENCE } from '../config/constants';
 import { AssetInstance } from './AssetInstance';
+import { BarrierGate } from './environment/BarrierGate';
 
 interface ParkingLotProps {
     capacity?: number;
@@ -21,21 +22,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
     const groundWidth = parkingWidth + 40;
     const groundDepth = blockHeight + 10;
 
-    const gates = useMemo(() => {
-        return (
-            <group key="gate-main" position={[-14, 0, 0]}>
-                <Box position={[0, 1.5, 9]} args={[2, 3, 2]} castShadow>
-                    <meshStandardMaterial color="#4444FF" />
-                </Box>
-                <Box position={[0, 1, 7.5]} args={[0.5, 2, 0.5]}>
-                    <meshStandardMaterial color="#FFFF00" />
-                </Box>
-                <Box position={[0, 2, 3.5]} args={[0.2, 0.2, 8]}>
-                    <meshStandardMaterial color="#FF0000" />
-                </Box>
-            </group>
-        );
-    }, []);
+    // Barrier gate is now a separate animated component
 
     const lines = useMemo(() => {
         const { SLOT_WIDTH, SLOT_DEPTH, LANE_GAP, GAP_SIZE } = DIMENSIONS;
@@ -154,7 +141,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
                 <meshStandardMaterial color={COLORS.GROUND} roughness={0.8} />
             </Plane>
 
-            {gates}
+            <BarrierGate position={[-14, 0, -5]} />
             {lines}
             <Suspense fallback={null}>
                 {fences}

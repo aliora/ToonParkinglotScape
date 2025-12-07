@@ -16,6 +16,7 @@ const ARRIVAL_THRESHOLD = 0.3;
 export function VehicleBox({ data }: VehicleBoxProps) {
     const meshRef = useRef<Mesh>(null);
     const updateVehicleState = useTrafficStore((state) => state.updateVehicleState);
+    const updateVehiclePosition = useTrafficStore((state) => state.updateVehiclePosition);
 
     // Box dimensions based on vehicle type - MUST BE DEFINED BEFORE useFrame
     const dimensions: [number, number, number] = useMemo(() => {
@@ -49,6 +50,7 @@ export function VehicleBox({ data }: VehicleBoxProps) {
 
     const [currentPointIndex, setCurrentPointIndex] = useState(1); // Start at first waypoint
     const [hasArrived, setHasArrived] = useState(false);
+    const frameCountRef = useRef(0);
 
     // Initialize position at spawn point
     useEffect(() => {
@@ -118,6 +120,12 @@ export function VehicleBox({ data }: VehicleBoxProps) {
         mesh.position.x += direction.x * moveDistance;
         mesh.position.z += direction.z * moveDistance;
         mesh.position.y = vehicleHeight / 2;
+
+        // Report position to store every 10 frames for barrier detection
+        frameCountRef.current++;
+        if (frameCountRef.current % 10 === 0) {
+            updateVehiclePosition(data.id, mesh.position);
+        }
     });
 
     return (
