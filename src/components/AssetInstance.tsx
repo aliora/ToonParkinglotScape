@@ -11,6 +11,8 @@ interface AssetInstanceProps {
     rotation?: [number, number, number];
     scale?: number;
     texturePath?: string;
+    preserveMaterials?: boolean;
+    baseColor?: string;
 }
 
 const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
@@ -18,7 +20,9 @@ const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
     position,
     rotation,
     scale = 1,
-    texturePath
+    texturePath,
+    preserveMaterials = false,
+    baseColor
 }) => {
     const fbx = useFBX(PATHS.BASE + url);
     const texPathToUse = texturePath || PATHS.TEXTURE_DEFAULT;
@@ -26,17 +30,35 @@ const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
 
     const scene = useMemo(() => {
         const clone = SkeletonUtils.clone(fbx);
-        clone.traverse((child: any) => {
-            if (child.isMesh) {
-                child.material = new THREE.MeshStandardMaterial({
-                    map: texture,
-                    transparent: true,
-                    alphaTest: 0.5
-                });
-            }
-        });
+        if (!preserveMaterials) {
+            clone.traverse((child: any) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({
+                        map: texture,
+                        transparent: true,
+                        alphaTest: 0.5
+                    });
+                }
+            });
+        } else if (baseColor) {
+            // Apply base color to preserved materials
+            clone.traverse((child: any) => {
+                if (child.isMesh && child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material = child.material.map((mat: any) => {
+                            const newMat = mat.clone();
+                            newMat.color = new THREE.Color(baseColor);
+                            return newMat;
+                        });
+                    } else {
+                        child.material = child.material.clone();
+                        child.material.color = new THREE.Color(baseColor);
+                    }
+                }
+            });
+        }
         return clone;
-    }, [fbx, texture]);
+    }, [fbx, texture, preserveMaterials, baseColor]);
 
     return (
         <primitive

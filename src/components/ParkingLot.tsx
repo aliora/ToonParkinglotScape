@@ -1,8 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, Suspense } from 'react';
 import { Plane, Box } from '@react-three/drei';
 import { useParkingLayout } from '../hooks/useParkingLayout';
-import { DIMENSIONS, COLORS } from '../config/constants';
+import { DIMENSIONS, COLORS, PARKING_FENCE } from '../config/constants';
+import { AssetInstance } from './AssetInstance';
 
 interface ParkingLotProps {
     capacity?: number;
@@ -99,6 +100,48 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
         return els;
     }, [rows, cols, capacity, blockHeight, pairHeight]);
 
+    // Fence spawning on parking lines
+    const fences = useMemo(() => {
+        const { SLOT_WIDTH, SLOT_DEPTH, LANE_GAP, GAP_SIZE } = DIMENSIONS;
+        const fence: React.ReactNode[] = [];
+        const startX = 5;
+        const startBlockZ = -(blockHeight / 2) + pairHeight / 2;
+
+        for (let r = 0; r < rows; r++) {
+            const pairIndex = Math.floor(r / 2);
+            const isEven = r % 2 === 0;
+            const pairCenterZ = startBlockZ + pairIndex * pairHeight;
+
+            const zPos = isEven
+                ? pairCenterZ - (LANE_GAP / 2 + SLOT_DEPTH / 2)
+                : pairCenterZ + (LANE_GAP / 2 + SLOT_DEPTH / 2);
+
+            const backLineZ = isEven ? zPos - SLOT_DEPTH / 2 : zPos + SLOT_DEPTH / 2;
+
+            for (let s = 0; s < cols; s++) {
+                const currentSlotIndex = r * cols + s;
+                if (currentSlotIndex >= capacity) break;
+
+                const gapOffset = Math.floor(s / 5) * GAP_SIZE;
+                const xPos = startX + s * SLOT_WIDTH + gapOffset;
+
+                // Back Line Fence (horizontal - Z axis)
+                const yPos = (0 * PARKING_FENCE.yOffsetMultiplier) + PARKING_FENCE.yOffsetAdd;
+                fence.push(
+                    <AssetInstance
+                        key={`fence-b-${r}-${s}`}
+                        url={PARKING_FENCE.model}
+                        position={[xPos, yPos, backLineZ]}
+                        rotation={PARKING_FENCE.rotationHorizontal}
+                        scale={PARKING_FENCE.scale}
+                        preserveMaterials={true}
+                    />
+                );
+            }
+        }
+        return fence;
+    }, [rows, cols, capacity, blockHeight, pairHeight]);
+
     return (
         <group>
             {/* Ground Plane */}
@@ -113,6 +156,9 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
 
             {gates}
             {lines}
+            <Suspense fallback={null}>
+                {fences}
+            </Suspense>
         </group>
     );
 };

@@ -22,6 +22,16 @@ export const PATHS = {
     TEXTURE_NATURE: '/Texture/TXT_LowPolyEssentials.png',
 };
 
+// Parking line fence configuration
+export const PARKING_FENCE = {
+    model: 'Metal_rod_fence.fbx',
+    scale: 1,
+    yOffsetMultiplier: 1,    // Y position = (base * multiplier) + offset
+    yOffsetAdd: -0.15,           // Additional Y offset
+    rotationVertical: [1, Math.PI / 2, 0] as [number, number, number],
+    rotationHorizontal: [0, 0, 0] as [number, number, number],
+};
+
 export const ASSETS = {
     buildings: Array.from({ length: 7 }, (_, i) => `Building_${i + 1}.fbx`),
     nature: {
@@ -38,7 +48,12 @@ export const ASSETS = {
         ]
     },
     street: {
-        lights: ['Light.fbx'],
+        lights: ['Street_light.fbx'],
+        lightScale: 0.035 * 30,
+        lightRotation: [0, -190, 0] as [number, number, number],
+        lightYOffset: 0,
+        preserveMaterials: true,
+        baseColor: '#9e9e9eff',  // Material base color (hex)
     },
     entry: {
         signs: [], // Populated or empty based on availability

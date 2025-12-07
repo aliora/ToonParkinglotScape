@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Sky, Environment } from '@react-three/drei';
+import { OrbitControls, Sky, Environment, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { Leva, useControls } from 'leva';
 import { ParkingLot } from './components/ParkingLot';
 import { EnvironmentWrapper } from './components/EnvironmentWrapper';
@@ -25,6 +25,14 @@ function Scene() {
       <OrbitControls target={[10, 0, 0]} />
       <Sky sunPosition={[100, 20, 100]} />
       <Environment preset="city" />
+
+      {/* XYZ Orientation Gizmo */}
+      <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+        <GizmoViewport
+          axisColors={['#ff3653', '#0adb50', '#2c8fdf']}
+          labelColor="white"
+        />
+      </GizmoHelper>
     </>
   );
 }
