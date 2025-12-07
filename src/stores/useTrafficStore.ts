@@ -43,7 +43,7 @@ const SPAWN_POINT = new Vector3(-35, 0, 0);
 // Entry point onto the main parking area
 const ENTRY_POINT = new Vector3(-5, 0, 0);
 // Junction point where vehicles choose upper or lower lane
-const JUNCTION_POINT_X = 0;
+const JUNCTION_POINT_X = -5;
 
 /**
  * Generate Manhattan-style path from spawn to parking spot
