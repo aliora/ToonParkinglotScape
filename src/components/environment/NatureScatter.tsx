@@ -19,8 +19,7 @@ export const NatureScatter: React.FC<Props> = ({ boundMinX, boundMaxX, boundMinZ
         const { STREET_OFFSET } = DIMENSIONS;
 
         const buildingLineOffset = STREET_OFFSET;
-        const buildingBuffer = 5;
-        const parkingBuffer = 2;
+        const buildingBuffer = DIMENSIONS.BUILDING_EXCLUSION_BUFFER;
 
         const spawnOffset = buildingLineOffset - buildingBuffer;
 
@@ -35,7 +34,8 @@ export const NatureScatter: React.FC<Props> = ({ boundMinX, boundMaxX, boundMinZ
             const px = gMinX + random() * (gMaxX - gMinX);
             const pz = gMinZ + random() * (gMaxZ - gMinZ);
 
-            // Exclusion Zone 1: Parking Lot
+            // Exclusion Zone 1: Parking Lot (forbidden zone)
+            const parkingBuffer = DIMENSIONS.PARKING_EXCLUSION_BUFFER;
             const pMinX = boundMinX - parkingBuffer;
             const pMaxX = boundMaxX + parkingBuffer;
             const pMinZ = boundMinZ - parkingBuffer;
@@ -52,17 +52,28 @@ export const NatureScatter: React.FC<Props> = ({ boundMinX, boundMaxX, boundMinZ
             if (px > rMinX && px < rMaxX && pz > rMinZ && pz < rMaxZ) continue;
 
             const item = ASSETS.scatter[Math.floor(random() * ASSETS.scatter.length)];
-            const rotY = random() * Math.PI * 2;
-            const s = item.scale * (0.01 + random() * 0.004);
+            const { treeConfig } = ASSETS.nature;
+
+            // Random scale using treeConfig
+            const baseScale = item.scale;
+            const scaleVar = (random() - 0.01) * treeConfig.scaleVariation;
+            const finalScale = baseScale * scaleVar * treeConfig.globalScaleMultiplier;
+
+            // Random rotation using treeConfig
+            const rotY = treeConfig.randomRotation
+                ? treeConfig.rotation[1] + (random() - 0.04) * Math.PI * 2 * treeConfig.rotationVariation
+                : treeConfig.rotation[1];
 
             els.push(
                 <AssetInstance
                     key={`scatter-${keyCounter++}`}
                     url={item.url}
-                    position={[px, 0, pz]}
-                    rotation={[0, rotY, 0]}
-                    scale={s}
-                    texturePath={texturePath}
+                    position={[px, treeConfig.yOffset, pz]}
+                    rotation={[treeConfig.rotation[0], rotY, treeConfig.rotation[2]]}
+                    scale={finalScale}
+                    texturePath={item.preserveMaterials ? undefined : texturePath}
+                    preserveMaterials={item.preserveMaterials}
+                    baseColor={item.baseColor || undefined}
                 />
             );
         }

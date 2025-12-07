@@ -36,7 +36,8 @@ const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
                     child.material = new THREE.MeshStandardMaterial({
                         map: texture,
                         transparent: true,
-                        alphaTest: 0.5
+                        alphaTest: 0.5,
+                        color: baseColor || '#ffffff', // Apply base color if provided
                     });
                 }
             });

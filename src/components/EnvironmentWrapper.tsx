@@ -1,10 +1,12 @@
 import React, { Suspense } from 'react';
 import { Plane } from '@react-three/drei';
+import { useControls } from 'leva';
 import { AssetInstance } from './AssetInstance';
 import { useParkingLayout } from '../hooks/useParkingLayout';
 import { DIMENSIONS, ASSETS, COLORS } from '../config/constants';
 import { SurroundingBuildings } from './environment/SurroundingBuildings';
 import { PerimeterNature } from './environment/PerimeterNature';
+import { LowPolyClouds } from './environment/LowPolyClouds';
 import { ConnectionRoad } from './environment/ConnectionRoad';
 import { InteriorLights } from './environment/InteriorLights';
 import { NatureScatter } from './environment/NatureScatter';
@@ -14,6 +16,13 @@ interface EnvironmentWrapperProps {
 }
 
 export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity = 20 }) => {
+    // Read timeOfDay same as App.tsx to determine cloud color
+    // We use a separate useControls call but it syncs with the one in App.tsx by key
+    const { timeOfDay } = useControls('Environment', {
+        timeOfDay: { options: ['Day', 'Night'], value: 'Day' },
+    });
+    const isNight = timeOfDay === 'Night';
+    const cloudColor = '#ffffff';
     const {
         boundMinX,
         boundMaxX,
@@ -63,6 +72,15 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                     boundMaxZ={boundMaxZ}
                 />
 
+                <LowPolyClouds
+                    boundMinX={boundMinX}
+                    boundMaxX={boundMaxX}
+                    boundMinZ={boundMinZ}
+                    boundMaxZ={boundMaxZ}
+                    density={0.5}
+                    color={cloudColor}
+                />
+
                 <NatureScatter
                     boundMinX={boundMinX}
                     boundMaxX={boundMaxX}
@@ -72,7 +90,7 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
 
                 <ConnectionRoad minX={minX} />
 
-                <InteriorLights capacity={capacity} />
+                <InteriorLights capacity={capacity} isNight={isNight} />
 
                 {/* Entry Sign - kept simple here as it's a single item */}
                 {ASSETS.entry.signs.length > 0 && (
