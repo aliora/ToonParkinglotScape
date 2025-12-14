@@ -55,7 +55,6 @@ export function ControlPanel() {
     const parkingSpots = useTrafficStore((state) => state.parkingSpots);
     const queueSpawn = useTrafficStore((state) => state.queueSpawn);
     const removeVehicle = useTrafficStore((state) => state.removeVehicle);
-    const triggerVehicleExit = useTrafficStore((state) => state.triggerVehicleExit);
 
     const availableSpots = parkingSpots.filter((s) => !s.occupied).length;
 
@@ -134,27 +133,8 @@ export function ControlPanel() {
                             </div>
                             <div style={{ fontSize: '11px', opacity: 0.7 }}>
                                 {vehicle.plate} • {vehicle.state}
-                                {vehicle.isExiting && ' • exiting'}
-                                {vehicle.waitingToExit && ' • waiting'}
                             </div>
                         </div>
-                        {vehicle.state === 'parked' && !vehicle.isExiting && (
-                            <button
-                                onClick={() => triggerVehicleExit(vehicle.id)}
-                                style={{
-                                    background: 'rgba(59, 130, 246, 0.8)',
-                                    border: 'none',
-                                    color: 'white',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    cursor: 'pointer',
-                                    marginRight: '4px',
-                                }}
-                            >
-                                Exit
-                            </button>
-                        )}
                         <button
                             onClick={() => removeVehicle(vehicle.id)}
                             style={{

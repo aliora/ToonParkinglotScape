@@ -26,11 +26,7 @@ export function BarrierGate({
     const barrierBusy = useTrafficStore((state) => state.barrierBusy);
     const setVehicleWaiting = useTrafficStore((state) => state.setVehicleWaiting);
     const grantBarrierPass = useTrafficStore((state) => state.grantBarrierPass);
-    const grantExitPass = useTrafficStore((state) => state.grantExitPass);
-    const releaseExitGate = useTrafficStore((state) => state.releaseExitGate);
     const setBarrierBusy = useTrafficStore((state) => state.setBarrierBusy);
-    const hasEntryVehicles = useTrafficStore((state) => state.hasEntryVehicles);
-    const advanceExitQueue = useTrafficStore((state) => state.advanceExitQueue);
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentRotation, setCurrentRotation] = useState(ARM_CLOSED_ROTATION);
@@ -57,13 +53,13 @@ export function BarrierGate({
         });
     }, [vehicles, position, triggerDistance, setVehicleWaiting]);
 
-    // Process entry and exit queues
+    // Process entry queue
     useEffect(() => {
         if (processingVehicleId || barrierBusy) return;
 
-        // Priority: Entry vehicles first
+        // Find entry vehicle waiting at position 1
         const entryWaiting = vehicles.find(
-            (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier && !v.isExiting
+            (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier
         );
 
         if (entryWaiting) {
@@ -79,48 +75,8 @@ export function BarrierGate({
                     setProcessingVehicleId(null);
                 }, passTime * 1000);
             }, waitTime * 1000);
-            return;
         }
-
-        // No entry vehicles - process exit from position 5 only
-        if (!hasEntryVehicles()) {
-            // Only process exit from position 5 (center)
-            const exitWaiting = vehicles.find(
-                (v) =>
-                    v.isExiting &&
-                    v.exitQueuePosition === 5 &&
-                    !v.canPassBarrier // Removed isWaitingAtBarrier check to allow non-stop flow
-            );
-
-            if (exitWaiting) {
-                setProcessingVehicleId(exitWaiting.id);
-
-                // Immediate open for continuous flow
-                setIsOpen(true);
-                grantExitPass(exitWaiting.id);
-
-                closeTimerRef.current = window.setTimeout(() => {
-                    setIsOpen(false);
-                    setBarrierBusy(false);
-                    // Free position 5 only after barrier closes/vehicle exits
-                    releaseExitGate(exitWaiting.id);
-                    setProcessingVehicleId(null);
-                    // attempt to advance next vehicle
-                    advanceExitQueue();
-                }, passTime * 1000);
-            }
-        }
-    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, grantExitPass, setBarrierBusy, hasEntryVehicles, advanceExitQueue, waitTime, passTime]);
-
-    // Separate interval for advancing exit queue to center
-    useEffect(() => {
-        const intervalId = setInterval(() => {
-            // advanceExitQueue handles its own condition checks
-            advanceExitQueue();
-        }, 1000);
-
-        return () => clearInterval(intervalId);
-    }, [advanceExitQueue]);
+    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, setBarrierBusy, waitTime, passTime]);
 
     useEffect(() => {
         return () => {
