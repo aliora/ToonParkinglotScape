@@ -35,7 +35,7 @@
         @viteReactRefresh
         
         {{-- Main React Bundle (compiled by host app) --}}
-        @vite('resources/js/parking-visualization/main.tsx')
+        @vite('vendor/zone/parking-3d/resources/js/parking-visualization/main.tsx')
         
         <script type="module">
             document.addEventListener('DOMContentLoaded', () => {
