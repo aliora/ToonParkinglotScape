@@ -2,8 +2,6 @@
 
 namespace Zone\Parking3D;
 
-use Filament\Support\Assets\Js;
-use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Support\ServiceProvider;
 
 class Parking3DServiceProvider extends ServiceProvider
@@ -24,11 +22,5 @@ class Parking3DServiceProvider extends ServiceProvider
                 __DIR__ . '/../resources/views' => resource_path('views/vendor/parking-3d'),
             ], 'parking-3d-views');
         }
-
-        // Register Filament assets (the JS is compiled by host app's Vite)
-        FilamentAsset::register([
-            Js::make('parking-3d', __DIR__ . '/../resources/dist/parking-visualization.js')
-                ->loadedOnRequest(),
-        ], 'zone/parking-3d');
     }
 }
