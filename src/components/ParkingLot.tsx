@@ -147,47 +147,40 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
                 {fences}
             </Suspense>
 
-            {/* DEBUG: Exit Queue Position Markers (RED) */}
-            {/* Position 1: (-6, 0, -15) */}
-            <mesh position={[-6, 0.5, -15]}>
+            {/* DEBUG: Entry Queue Position Markers (GREEN) - z = -5 */}
+            <mesh position={[-22, 0.5, -5]}>
+                <sphereGeometry args={[0.4, 16, 16]} />
+                <meshStandardMaterial color="green" />
+            </mesh>
+            <mesh position={[-32, 0.5, -5]}>
+                <sphereGeometry args={[0.4, 16, 16]} />
+                <meshStandardMaterial color="green" />
+            </mesh>
+            <mesh position={[-42, 0.5, -5]}>
+                <sphereGeometry args={[0.4, 16, 16]} />
+                <meshStandardMaterial color="green" />
+            </mesh>
+
+            {/* DEBUG: Exit Queue Position Markers (RED) - z = +5 */}
+            <mesh position={[-8, 0, 8]}>
                 <sphereGeometry args={[0.5, 16, 16]} />
                 <meshStandardMaterial color="red" />
             </mesh>
-            {/* Position 2: (-10, 0, -10) */}
-            <mesh position={[-10, 0.5, -10]}>
+            <mesh position={[2, 0, 10]}>
                 <sphereGeometry args={[0.5, 16, 16]} />
                 <meshStandardMaterial color="red" />
             </mesh>
-            {/* Position 3: (-10, 0, 10) */}
-            <mesh position={[-10, 0.5, 10]}>
+            <mesh position={[12, 0, 10]}>
                 <sphereGeometry args={[0.5, 16, 16]} />
                 <meshStandardMaterial color="red" />
             </mesh>
-            {/* Position 4: (-6, 0, 15) */}
-            <mesh position={[-6, 0.5, 15]}>
-                <sphereGeometry args={[0.5, 16, 16]} />
-                <meshStandardMaterial color="red" />
-            </mesh>
-            {/* Position 5: CENTER (-14, 0, 0) */}
+
+            {/* DEBUG: Barrier Position (ORANGE) */}
             <mesh position={[-14, 0.5, 0]}>
                 <sphereGeometry args={[0.6, 16, 16]} />
                 <meshStandardMaterial color="orange" />
             </mesh>
-
-            {/* DEBUG: Entry Queue Position Markers (GREEN) */}
-            <mesh position={[-18, 0.5, 0]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-            <mesh position={[-28, 0.5, 0]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-            <mesh position={[-38, 0.5, 0]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-        </group >
+        </group>
     );
 };
 

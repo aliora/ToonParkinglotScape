@@ -15,11 +15,20 @@ export interface ParkingSpot {
     isTopRow: boolean;
 }
 
-// Entry queue positions at barrier
+// Entry queue positions at barrier (z = -5 for entry lane)
+// Vehicles come from LEFT and queue towards barrier
 export const QUEUE_POSITIONS = [
-    new Vector3(-20, 0, 0), // Position 1 - closest to barrier
-    new Vector3(-28, 0, 0), // Position 2
-    new Vector3(-36, 0, 0), // Position 3 - furthest
+    new Vector3(-22, 0, -5), // Position 1 - closest to barrier
+    new Vector3(-32, 0, -5), // Position 2
+    new Vector3(-42, 0, -5), // Position 3 - furthest (spawn side)
+];
+
+// Exit queue positions - matches debug markers
+// Vehicles come from parking area and queue towards exit
+export const EXIT_QUEUE_POSITIONS = [
+    new Vector3(-8, 0, 8),   // Position 1 - closest to barrier
+    new Vector3(2, 0, 10),   // Position 2
+    new Vector3(12, 0, 10),  // Position 3 - closest to parking area
 ];
 
 export interface VehicleInstance extends IVehicleData {
@@ -33,6 +42,13 @@ export interface VehicleInstance extends IVehicleData {
     queuePosition: number; // 0 = passed, 1-3 = entry queue, -1 = not in queue
     // Queue transition tracking
     isTransitioning: boolean; // True while moving to new queue position
+    // Exit queue fields
+    isExiting: boolean; // True when vehicle is in exit mode
+    exitQueuePosition: number; // 0 = passed, 1-3 = exit queue, -1 = not in queue
+    isWaitingAtExitBarrier: boolean;
+    canPassExitBarrier: boolean;
+    exitWaypoints: Vector3[];
+    isExitTransitioning: boolean; // True while moving to new exit queue position
 }
 
 interface PendingSpawn {
@@ -51,6 +67,8 @@ interface TrafficState {
     spawnQueue: PendingSpawn[];
     // Queue transition lock - prevents spawning during queue advancement
     queueTransitioning: boolean;
+    // Exit queue state
+    exitQueueTransitioning: boolean;
 
     setSpots: (spots: ParkingSpot[]) => void;
     setLayoutInfo: (blockHeight: number, pairHeight: number, numPairs: number) => void;
@@ -71,18 +89,34 @@ interface TrafficState {
     getNextWaitingVehicle: () => VehicleInstance | null;
     advanceQueue: () => void;
     setVehicleQueuePosition: (id: string, position: number) => void;
+    // Exit queue system
+    startExitingVehicle: (id: string) => void;
+    getNextExitQueuePosition: () => number;
+    notifyVehicleArrivedAtExitQueuePosition: (id: string) => void;
+    setVehicleExitWaiting: (id: string, waiting: boolean) => void;
+    grantExitBarrierPass: (id: string) => void;
+    getNextExitWaitingVehicle: () => VehicleInstance | null;
+    advanceExitQueue: () => void;
 }
 
-const SPAWN_POINT = new Vector3(-45, 0, 0);
-const ENTRY_POINT = new Vector3(-5, 0, 0);
+// Lane Z positions
+const ENTRY_LANE_Z = -5; // Entry lane at z = -5
+const EXIT_LANE_Z = 5;   // Exit lane at z = +5
+
+const SPAWN_POINT = new Vector3(-70, 0, ENTRY_LANE_Z); // Spawn on entry lane (extended)
+const ENTRY_POINT = new Vector3(-5, 0, ENTRY_LANE_Z);   // Entry point on entry lane
+const EXIT_POINT = new Vector3(-70, 0, EXIT_LANE_Z);    // Exit point on exit lane (extended)
 const JUNCTION_POINT_X = -5;
 
 function generateWaypoints(spot: ParkingSpot): Vector3[] {
     const waypoints: Vector3[] = [];
     const { SLOT_DEPTH } = DIMENSIONS;
 
+    // Entry: come from entry lane (z = -5)
     waypoints.push(ENTRY_POINT.clone());
-    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, 0));
+    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, ENTRY_LANE_Z));
+
+    // Turn into parking area lanes
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
 
     const laneApproachX = spot.position.x;
@@ -91,6 +125,30 @@ function generateWaypoints(spot: ParkingSpot): Vector3[] {
     const approachOffset = spot.isTopRow ? SLOT_DEPTH / 2 + 0.5 : -(SLOT_DEPTH / 2 + 0.5);
     waypoints.push(new Vector3(spot.position.x, 0, spot.position.z + approachOffset));
     waypoints.push(spot.position.clone());
+
+    return waypoints;
+}
+
+// Generate exit waypoints using EXIT lane (z = +5)
+function generateExitWaypoints(spot: ParkingSpot): Vector3[] {
+    const waypoints: Vector3[] = [];
+    const { SLOT_DEPTH } = DIMENSIONS;
+
+    // 1. Move out of spot to lane
+    const approachOffset = spot.isTopRow ? SLOT_DEPTH / 2 + 0.5 : -(SLOT_DEPTH / 2 + 0.5);
+    waypoints.push(new Vector3(spot.position.x, 0, spot.position.z + approachOffset));
+
+    // 2. Move along the lane
+    waypoints.push(new Vector3(spot.position.x, 0, spot.laneZ));
+
+    // 3. Move to junction point
+    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
+
+    // 4. Move to exit lane (z = +5)
+    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, EXIT_LANE_Z));
+
+    // After passing barrier, continue to EXIT_POINT
+    waypoints.push(EXIT_POINT.clone());
 
     return waypoints;
 }
@@ -105,6 +163,7 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     barrierBusy: false,
     spawnQueue: [],
     queueTransitioning: false,
+    exitQueueTransitioning: false,
 
     setSpots: (spots) => set({ parkingSpots: spots }),
 
@@ -253,6 +312,13 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
             canPassBarrier: false,
             queuePosition: assignedQueuePos,
             isTransitioning: true, // New vehicle is transitioning to queue position
+            // Exit fields initialized to default
+            isExiting: false,
+            exitQueuePosition: -1,
+            isWaitingAtExitBarrier: false,
+            canPassExitBarrier: false,
+            exitWaypoints: [],
+            isExitTransitioning: false,
         };
 
         console.log(`[SpawnQueue] Vehicle ${vehicleInstance.id} spawned, heading to position ${assignedQueuePos}`);
@@ -326,6 +392,7 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         set({ barrierBusy: busy });
         if (!busy) {
             get().advanceQueue();
+            get().advanceExitQueue();
         }
     },
 
@@ -364,5 +431,152 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         return state.vehicles.find(
             (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier
         ) || null;
+    },
+
+    // ==================== EXIT QUEUE SYSTEM ====================
+
+    // Start the exit process for a parked vehicle
+    startExitingVehicle: (id: string) => {
+        const state = get();
+        const vehicle = state.vehicles.find((v) => v.id === id);
+
+        if (!vehicle || vehicle.state !== 'parked') {
+            console.warn(`[ExitQueue] Cannot start exit for vehicle ${id}: not found or not parked`);
+            return;
+        }
+
+        // Get spot info to generate exit waypoints
+        const spot = state.parkingSpots.find((s) => s.id === vehicle.spotId);
+        if (!spot) {
+            console.warn(`[ExitQueue] Cannot find spot ${vehicle.spotId} for vehicle ${id}`);
+            return;
+        }
+
+        // Get next exit queue position
+        const exitQueuePos = state.getNextExitQueuePosition();
+        if (exitQueuePos === -1) {
+            console.warn(`[ExitQueue] Exit queue is full, vehicle ${id} must wait`);
+            return;
+        }
+
+        const exitWaypoints = generateExitWaypoints(spot);
+
+        console.log(`[ExitQueue] Vehicle ${id} starting exit, assigned queue position ${exitQueuePos}`);
+
+        set((state) => ({
+            vehicles: state.vehicles.map((v) =>
+                v.id === id
+                    ? {
+                        ...v,
+                        isExiting: true,
+                        exitQueuePosition: exitQueuePos,
+                        exitWaypoints,
+                        state: 'moving' as const,
+                        isExitTransitioning: true,
+                    }
+                    : v
+            ),
+            // Free up the parking spot
+            parkingSpots: state.parkingSpots.map((s) =>
+                s.id === vehicle.spotId ? { ...s, occupied: false } : s
+            ),
+        }));
+    },
+
+    // Get next available exit queue position
+    getNextExitQueuePosition: () => {
+        const state = get();
+        const vehiclesInExitQueue = state.vehicles.filter(
+            (v) => v.exitQueuePosition >= 1 && v.exitQueuePosition <= 3
+        );
+
+        if (vehiclesInExitQueue.length >= 3) return -1;
+
+        // Find the highest occupied position
+        let maxOccupiedPos = 0;
+        vehiclesInExitQueue.forEach((v) => {
+            if (v.exitQueuePosition > maxOccupiedPos) {
+                maxOccupiedPos = v.exitQueuePosition;
+            }
+        });
+
+        return maxOccupiedPos + 1;
+    },
+
+    // Notify that a vehicle has arrived at its exit queue position
+    notifyVehicleArrivedAtExitQueuePosition: (id: string) => {
+        console.log(`[ExitQueue] Vehicle ${id} arrived at exit queue position`);
+
+        set((state) => ({
+            vehicles: state.vehicles.map((v) =>
+                v.id === id ? { ...v, isExitTransitioning: false } : v
+            ),
+        }));
+
+        // Check if all vehicles have finished transitioning
+        const state = get();
+        const anyStillTransitioning = state.vehicles.some(
+            (v) => v.isExitTransitioning && v.exitQueuePosition >= 1 && v.exitQueuePosition <= 3
+        );
+
+        if (!anyStillTransitioning && state.exitQueueTransitioning) {
+            console.log('[ExitQueue] All exit vehicles settled, queue ready');
+            set({ exitQueueTransitioning: false });
+        }
+    },
+
+    // Set vehicle waiting at exit barrier
+    setVehicleExitWaiting: (id: string, waiting: boolean) => {
+        set((state) => ({
+            vehicles: state.vehicles.map((v) =>
+                v.id === id ? { ...v, isWaitingAtExitBarrier: waiting } : v
+            ),
+        }));
+    },
+
+    // Grant exit barrier pass to a vehicle
+    grantExitBarrierPass: (id: string) => {
+        set((state) => ({
+            vehicles: state.vehicles.map((v) =>
+                v.id === id
+                    ? { ...v, canPassExitBarrier: true, isWaitingAtExitBarrier: false, exitQueuePosition: 0 }
+                    : v
+            ),
+            barrierBusy: true,
+        }));
+    },
+
+    // Get next vehicle waiting at exit barrier
+    getNextExitWaitingVehicle: () => {
+        const state = get();
+        return state.vehicles.find(
+            (v) => v.exitQueuePosition === 1 && v.isWaitingAtExitBarrier && !v.canPassExitBarrier
+        ) || null;
+    },
+
+    // Advance exit queue (when a vehicle passes the barrier)
+    advanceExitQueue: () => {
+        const state = get();
+
+        const vehiclesToAdvance = state.vehicles.filter(
+            (v) => v.exitQueuePosition > 1 && v.exitQueuePosition <= 3
+        );
+
+        if (vehiclesToAdvance.length === 0) {
+            return;
+        }
+
+        console.log('[ExitQueue] Advancing exit queue...');
+        set({ exitQueueTransitioning: true });
+
+        set((state) => ({
+            vehicles: state.vehicles.map((v) => {
+                if (v.exitQueuePosition > 1 && v.exitQueuePosition <= 3) {
+                    console.log(`[ExitQueue] Vehicle ${v.id} moving from exit position ${v.exitQueuePosition} to ${v.exitQueuePosition - 1}`);
+                    return { ...v, exitQueuePosition: v.exitQueuePosition - 1, isExitTransitioning: true };
+                }
+                return v;
+            }),
+        }));
     },
 }));

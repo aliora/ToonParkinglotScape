@@ -55,11 +55,16 @@ export function ControlPanel() {
     const parkingSpots = useTrafficStore((state) => state.parkingSpots);
     const queueSpawn = useTrafficStore((state) => state.queueSpawn);
     const removeVehicle = useTrafficStore((state) => state.removeVehicle);
+    const startExitingVehicle = useTrafficStore((state) => state.startExitingVehicle);
 
     const availableSpots = parkingSpots.filter((s) => !s.occupied).length;
 
     const handleSpawn = (type: VehicleType) => {
         queueSpawn(type);
+    };
+
+    const handleExit = (id: string) => {
+        startExitingVehicle(id);
     };
 
     const getVehicleTypeName = (type: VehicleType): string => {
@@ -73,6 +78,16 @@ export function ControlPanel() {
             [VehicleType.MOTORCYCLE]: 'Motorcycle',
         };
         return names[type] || 'Vehicle';
+    };
+
+    const getVehicleStatus = (vehicle: typeof vehicles[0]): string => {
+        if (vehicle.isExiting) {
+            if (vehicle.exitQueuePosition >= 1) return `exiting (Q${vehicle.exitQueuePosition})`;
+            return 'exiting';
+        }
+        if (vehicle.state === 'parked') return 'parked';
+        if (vehicle.queuePosition >= 1) return `entering (Q${vehicle.queuePosition})`;
+        return vehicle.state;
     };
 
     return (
@@ -132,9 +147,25 @@ export function ControlPanel() {
                                 {getVehicleTypeName(vehicle.type)}
                             </div>
                             <div style={{ fontSize: '11px', opacity: 0.7 }}>
-                                {vehicle.plate} • {vehicle.state}
+                                {vehicle.plate} • {getVehicleStatus(vehicle)}
                             </div>
                         </div>
+                        {vehicle.state === 'parked' && !vehicle.isExiting && (
+                            <button
+                                onClick={() => handleExit(vehicle.id)}
+                                style={{
+                                    background: 'rgba(34, 197, 94, 0.8)',
+                                    border: 'none',
+                                    color: 'white',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Exit
+                            </button>
+                        )}
                         <button
                             onClick={() => removeVehicle(vehicle.id)}
                             style={{
@@ -157,3 +188,4 @@ export function ControlPanel() {
 }
 
 export default ControlPanel;
+

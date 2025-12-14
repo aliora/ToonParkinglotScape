@@ -27,20 +27,23 @@ export function BarrierGate({
     const setVehicleWaiting = useTrafficStore((state) => state.setVehicleWaiting);
     const grantBarrierPass = useTrafficStore((state) => state.grantBarrierPass);
     const setBarrierBusy = useTrafficStore((state) => state.setBarrierBusy);
+    // Exit queue functions
+    const grantExitBarrierPass = useTrafficStore((state) => state.grantExitBarrierPass);
 
     const [isOpen, setIsOpen] = useState(false);
     const [currentRotation, setCurrentRotation] = useState(ARM_CLOSED_ROTATION);
     const [processingVehicleId, setProcessingVehicleId] = useState<string | null>(null);
+    const [processingType, setProcessingType] = useState<'entry' | 'exit' | null>(null);
 
     const waitTimerRef = useRef<number | null>(null);
     const closeTimerRef = useRef<number | null>(null);
 
-    // Detect vehicles in waiting zone and mark them as waiting
+    // Detect vehicles in waiting zone and mark them as waiting (entry)
     useEffect(() => {
         const barrierPos = new Vector3(position[0], position[1], position[2]);
 
         vehicles.forEach((vehicle) => {
-            if (vehicle.state === 'parked' || vehicle.canPassBarrier) return;
+            if (vehicle.state === 'parked' || vehicle.canPassBarrier || vehicle.isExiting) return;
 
             const vehiclePos = vehicle.currentPosition;
             if (!vehiclePos) return;
@@ -53,7 +56,7 @@ export function BarrierGate({
         });
     }, [vehicles, position, triggerDistance, setVehicleWaiting]);
 
-    // Process entry queue
+    // Process entry and exit queues (alternating priority)
     useEffect(() => {
         if (processingVehicleId || barrierBusy) return;
 
@@ -62,8 +65,15 @@ export function BarrierGate({
             (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier
         );
 
+        // Find exit vehicle waiting at position 1
+        const exitWaiting = vehicles.find(
+            (v) => v.exitQueuePosition === 1 && v.isWaitingAtExitBarrier && !v.canPassExitBarrier
+        );
+
+        // Priority: entry first, then exit (can be changed to alternating)
         if (entryWaiting) {
             setProcessingVehicleId(entryWaiting.id);
+            setProcessingType('entry');
 
             waitTimerRef.current = window.setTimeout(() => {
                 setIsOpen(true);
@@ -73,10 +83,26 @@ export function BarrierGate({
                     setIsOpen(false);
                     setBarrierBusy(false);
                     setProcessingVehicleId(null);
+                    setProcessingType(null);
+                }, passTime * 1000);
+            }, waitTime * 1000);
+        } else if (exitWaiting) {
+            setProcessingVehicleId(exitWaiting.id);
+            setProcessingType('exit');
+
+            waitTimerRef.current = window.setTimeout(() => {
+                setIsOpen(true);
+                grantExitBarrierPass(exitWaiting.id);
+
+                closeTimerRef.current = window.setTimeout(() => {
+                    setIsOpen(false);
+                    setBarrierBusy(false);
+                    setProcessingVehicleId(null);
+                    setProcessingType(null);
                 }, passTime * 1000);
             }, waitTime * 1000);
         }
-    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, setBarrierBusy, waitTime, passTime]);
+    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, grantExitBarrierPass, setBarrierBusy, waitTime, passTime]);
 
     useEffect(() => {
         return () => {
@@ -107,7 +133,7 @@ export function BarrierGate({
             </Box>
 
             <Box position={[0, 3.2, 0]} args={[1.8, 0.4, 1.8]} castShadow>
-                <meshStandardMaterial color="#e74c3c" />
+                <meshStandardMaterial color={processingType === 'exit' ? '#27ae60' : '#e74c3c'} />
             </Box>
 
             <group ref={armRef} position={[0, 2.8, 0.5]}>
