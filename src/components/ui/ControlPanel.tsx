@@ -53,14 +53,14 @@ const colorSwatchStyles = (color: string): React.CSSProperties => ({
 export function ControlPanel() {
     const vehicles = useTrafficStore((state) => state.vehicles);
     const parkingSpots = useTrafficStore((state) => state.parkingSpots);
-    const queueSpawn = useTrafficStore((state) => state.queueSpawn);
+    const spawnVehicle = useTrafficStore((state) => state.spawnVehicle);
     const removeVehicle = useTrafficStore((state) => state.removeVehicle);
     const startExitingVehicle = useTrafficStore((state) => state.startExitingVehicle);
 
     const availableSpots = parkingSpots.filter((s) => !s.occupied).length;
 
     const handleSpawn = (type: VehicleType) => {
-        queueSpawn(type);
+        spawnVehicle(type);
     };
 
     const handleExit = (id: string) => {
@@ -81,13 +81,9 @@ export function ControlPanel() {
     };
 
     const getVehicleStatus = (vehicle: typeof vehicles[0]): string => {
-        if (vehicle.isExiting) {
-            if (vehicle.exitQueuePosition >= 1) return `exiting (Q${vehicle.exitQueuePosition})`;
-            return 'exiting';
-        }
+        if (vehicle.isExiting) return 'exiting';
         if (vehicle.state === 'parked') return 'parked';
-        if (vehicle.queuePosition >= 1) return `entering (Q${vehicle.queuePosition})`;
-        return vehicle.state;
+        return 'moving';
     };
 
     return (
@@ -188,4 +184,3 @@ export function ControlPanel() {
 }
 
 export default ControlPanel;
-

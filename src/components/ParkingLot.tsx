@@ -146,40 +146,6 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
             <Suspense fallback={null}>
                 {fences}
             </Suspense>
-
-            {/* DEBUG: Entry Queue Position Markers (GREEN) - z = -5 */}
-            <mesh position={[-22, 0.5, -5]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-            <mesh position={[-32, 0.5, -5]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-            <mesh position={[-42, 0.5, -5]}>
-                <sphereGeometry args={[0.4, 16, 16]} />
-                <meshStandardMaterial color="green" />
-            </mesh>
-
-            {/* DEBUG: Exit Queue Position Markers (RED) - z = +5 */}
-            <mesh position={[-8, 0, 8]}>
-                <sphereGeometry args={[0.5, 16, 16]} />
-                <meshStandardMaterial color="red" />
-            </mesh>
-            <mesh position={[2, 0, 10]}>
-                <sphereGeometry args={[0.5, 16, 16]} />
-                <meshStandardMaterial color="red" />
-            </mesh>
-            <mesh position={[12, 0, 10]}>
-                <sphereGeometry args={[0.5, 16, 16]} />
-                <meshStandardMaterial color="red" />
-            </mesh>
-
-            {/* DEBUG: Barrier Position (ORANGE) */}
-            <mesh position={[-14, 0.5, 0]}>
-                <sphereGeometry args={[0.6, 16, 16]} />
-                <meshStandardMaterial color="orange" />
-            </mesh>
         </group>
     );
 };

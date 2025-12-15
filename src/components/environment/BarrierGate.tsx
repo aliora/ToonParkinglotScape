@@ -1,155 +1,42 @@
-import { useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Box } from '@react-three/drei';
-import { Group, Vector3 } from 'three';
-import { useTrafficStore } from '../../stores/useTrafficStore';
 
 interface BarrierGateProps {
     position?: [number, number, number];
-    triggerDistance?: number;
-    waitTime?: number;
-    passTime?: number;
 }
 
-const ARM_CLOSED_ROTATION = 0;
-const ARM_OPEN_ROTATION = -Math.PI / 2;
-const ROTATION_SPEED = 3;
-
-export function BarrierGate({
-    position = [-14, 0, -5],
-    triggerDistance = 12,
-    waitTime = 1.5,
-    passTime = 2,
-}: BarrierGateProps) {
-    const armRef = useRef<Group>(null);
-    const vehicles = useTrafficStore((state) => state.vehicles);
-    const barrierBusy = useTrafficStore((state) => state.barrierBusy);
-    const setVehicleWaiting = useTrafficStore((state) => state.setVehicleWaiting);
-    const grantBarrierPass = useTrafficStore((state) => state.grantBarrierPass);
-    const setBarrierBusy = useTrafficStore((state) => state.setBarrierBusy);
-    // Exit queue functions
-    const grantExitBarrierPass = useTrafficStore((state) => state.grantExitBarrierPass);
-
-    const [isOpen, setIsOpen] = useState(false);
-    const [currentRotation, setCurrentRotation] = useState(ARM_CLOSED_ROTATION);
-    const [processingVehicleId, setProcessingVehicleId] = useState<string | null>(null);
-    const [processingType, setProcessingType] = useState<'entry' | 'exit' | null>(null);
-
-    const waitTimerRef = useRef<number | null>(null);
-    const closeTimerRef = useRef<number | null>(null);
-
-    // Detect vehicles in waiting zone and mark them as waiting (entry)
-    useEffect(() => {
-        const barrierPos = new Vector3(position[0], position[1], position[2]);
-
-        vehicles.forEach((vehicle) => {
-            if (vehicle.state === 'parked' || vehicle.canPassBarrier || vehicle.isExiting) return;
-
-            const vehiclePos = vehicle.currentPosition;
-            if (!vehiclePos) return;
-
-            const distance = barrierPos.distanceTo(vehiclePos);
-
-            if (distance < triggerDistance && !vehicle.isWaitingAtBarrier && !vehicle.canPassBarrier) {
-                setVehicleWaiting(vehicle.id, true);
-            }
-        });
-    }, [vehicles, position, triggerDistance, setVehicleWaiting]);
-
-    // Process entry and exit queues (alternating priority)
-    useEffect(() => {
-        if (processingVehicleId || barrierBusy) return;
-
-        // Find entry vehicle waiting at position 1
-        const entryWaiting = vehicles.find(
-            (v) => v.queuePosition === 1 && v.isWaitingAtBarrier && !v.canPassBarrier
-        );
-
-        // Find exit vehicle waiting at position 1
-        const exitWaiting = vehicles.find(
-            (v) => v.exitQueuePosition === 1 && v.isWaitingAtExitBarrier && !v.canPassExitBarrier
-        );
-
-        // Priority: entry first, then exit (can be changed to alternating)
-        if (entryWaiting) {
-            setProcessingVehicleId(entryWaiting.id);
-            setProcessingType('entry');
-
-            waitTimerRef.current = window.setTimeout(() => {
-                setIsOpen(true);
-                grantBarrierPass(entryWaiting.id);
-
-                closeTimerRef.current = window.setTimeout(() => {
-                    setIsOpen(false);
-                    setBarrierBusy(false);
-                    setProcessingVehicleId(null);
-                    setProcessingType(null);
-                }, passTime * 1000);
-            }, waitTime * 1000);
-        } else if (exitWaiting) {
-            setProcessingVehicleId(exitWaiting.id);
-            setProcessingType('exit');
-
-            waitTimerRef.current = window.setTimeout(() => {
-                setIsOpen(true);
-                grantExitBarrierPass(exitWaiting.id);
-
-                closeTimerRef.current = window.setTimeout(() => {
-                    setIsOpen(false);
-                    setBarrierBusy(false);
-                    setProcessingVehicleId(null);
-                    setProcessingType(null);
-                }, passTime * 1000);
-            }, waitTime * 1000);
-        }
-    }, [vehicles, processingVehicleId, barrierBusy, grantBarrierPass, grantExitBarrierPass, setBarrierBusy, waitTime, passTime]);
-
-    useEffect(() => {
-        return () => {
-            if (waitTimerRef.current) clearTimeout(waitTimerRef.current);
-            if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-        };
-    }, []);
-
-    useFrame((_, delta) => {
-        if (!armRef.current) return;
-
-        const targetRotation = isOpen ? ARM_OPEN_ROTATION : ARM_CLOSED_ROTATION;
-        const rotationDiff = targetRotation - currentRotation;
-
-        if (Math.abs(rotationDiff) > 0.01) {
-            const newRotation = currentRotation + Math.sign(rotationDiff) * ROTATION_SPEED * delta;
-            setCurrentRotation(newRotation);
-            armRef.current.rotation.x = newRotation;
-        } else {
-            armRef.current.rotation.x = targetRotation;
-        }
-    });
-
+// Simple decorative barrier - no queue logic
+export function BarrierGate({ position = [-14, 0, -5] }: BarrierGateProps) {
     return (
         <group position={position}>
+            {/* Base post */}
             <Box position={[0, 1.5, 0]} args={[1.5, 3, 1.5]} castShadow>
                 <meshStandardMaterial color="#2c3e50" />
             </Box>
 
+            {/* Top light */}
             <Box position={[0, 3.2, 0]} args={[1.8, 0.4, 1.8]} castShadow>
-                <meshStandardMaterial color={processingType === 'exit' ? '#27ae60' : '#e74c3c'} />
+                <meshStandardMaterial color="#27ae60" />
             </Box>
 
-            <group ref={armRef} position={[0, 2.8, 0.5]}>
+            {/* Barrier arm - always open */}
+            <group position={[0, 2.8, 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+                {/* Pivot */}
                 <Box position={[0, 0, 0]} args={[0.3, 0.3, 0.3]}>
                     <meshStandardMaterial color="#f1c40f" />
                 </Box>
 
+                {/* Arm */}
                 <Box position={[0, 0, 6]} args={[0.15, 0.15, 12]}>
                     <meshStandardMaterial color="#e74c3c" />
                 </Box>
 
+                {/* End cap */}
                 <Box position={[0, 0, 12]} args={[0.25, 0.25, 0.5]}>
                     <meshStandardMaterial color="#f39c12" emissive="#f39c12" emissiveIntensity={0.3} />
                 </Box>
             </group>
 
+            {/* Support post */}
             <Box position={[0, 0.5, 12]} args={[0.3, 1, 0.3]}>
                 <meshStandardMaterial color="#7f8c8d" />
             </Box>
