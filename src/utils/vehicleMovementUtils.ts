@@ -1,4 +1,4 @@
-import { Mesh, Vector3 } from 'three';
+import { Mesh, Vector3, Object3D } from 'three';
 
 // Constants
 export const MOVE_SPEED = 10;
@@ -9,7 +9,7 @@ export const PARKING_LERP_SPEED = 3.0;
 
 // Helper: Move mesh towards target, returns true if arrived
 export function moveTowardsTarget(
-    mesh: Mesh,
+    mesh: Object3D,
     target: Vector3,
     delta: number,
     vehicleHeight: number

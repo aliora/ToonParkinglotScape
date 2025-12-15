@@ -3,13 +3,19 @@ import { Vector3 } from 'three';
 import type { IVehicleData } from '../types/VehicleTypes';
 import { VehicleType } from '../types/VehicleTypes';
 import { createRandomVehicle } from '../utils/VehicleFactory';
-import { DIMENSIONS } from '../config/constants';
+import { DIMENSIONS, TRAFFIC_CONFIG } from '../config/constants';
 
 // --- CONFIGURATION CONSTANTS ---
 const MAX_VISIBLE_ENTRY_QUEUE = 3;
 const MAX_VISIBLE_EXIT_QUEUE = 3;
-const ENTRY_LANE_Z = -5;
-const SPAWN_POINT = new Vector3(-50, 0, ENTRY_LANE_Z);
+
+// Lane Configuration
+// Entry Lane: Top lane - LHT (swapped)
+const ENTRY_LANE_Z = -TRAFFIC_CONFIG.LANE_OFFSET;
+// Exit Lane:  Bottom lane - LHT (swapped)
+const EXIT_LANE_Z = TRAFFIC_CONFIG.LANE_OFFSET;
+
+const SPAWN_POINT = new Vector3(TRAFFIC_CONFIG.SPAWN_X, 0, ENTRY_LANE_Z);
 const JUNCTION_POINT_X = -5;
 
 // --- TYPES & INTERFACES ---
@@ -60,8 +66,13 @@ interface TrafficState {
 
     // Virtual Queue & Gate State
     virtualEntryBacklog: VirtualVehicleRequest[];
-    gateState: GateState;
-    currentGateVehicleId: string | null;
+
+    // Dual Gate States
+    entryGateState: GateState;
+    exitGateState: GateState;
+
+    currentEntryGateVehicleId: string | null;
+    currentExitGateVehicleId: string | null;
 
     spawnPoint: Vector3;
     blockHeight: number;
@@ -78,11 +89,17 @@ interface TrafficState {
     updateVehiclePosition: (id: string, position: Vector3) => void;
     startExitingVehicle: (id: string) => void;
 
-    // Gate Control Actions
-    requestGateAccess: (vehicleId: string) => boolean;
-    notifyGateOpen: () => void;
-    notifyPassageComplete: (vehicleId: string) => void;
-    notifyGateClosed: () => void;
+    // Gate Control Actions - ENTRY
+    requestEntryGateAccess: (vehicleId: string) => boolean;
+    notifyEntryGateOpen: () => void;
+    notifyEntryPassageComplete: (vehicleId: string) => void;
+    notifyEntryGateClosed: () => void;
+
+    // Gate Control Actions - EXIT
+    requestExitGateAccess: (vehicleId: string) => boolean;
+    notifyExitGateOpen: () => void;
+    notifyExitPassageComplete: (vehicleId: string) => void;
+    notifyExitGateClosed: () => void;
 
     // Internal Helper
     processQueues: () => void;
@@ -114,8 +131,9 @@ function generateExitWaypoints(spot: ParkingSpot): Vector3[] {
     waypoints.push(new Vector3(spot.position.x, 0, spot.position.z + approachOffset));
     waypoints.push(new Vector3(spot.position.x, 0, spot.laneZ));
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
-    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, ENTRY_LANE_Z));
-    waypoints.push(SPAWN_POINT.clone());
+    // Use EXIT LANE for return
+    waypoints.push(new Vector3(JUNCTION_POINT_X, 0, EXIT_LANE_Z));
+    waypoints.push(new Vector3(-50, 0, EXIT_LANE_Z)); // Exit point
 
     return waypoints;
 }
@@ -131,8 +149,12 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     numPairs: 0,
 
     virtualEntryBacklog: [],
-    gateState: GateState.IDLE,
-    currentGateVehicleId: null,
+
+    entryGateState: GateState.IDLE,
+    exitGateState: GateState.IDLE,
+
+    currentEntryGateVehicleId: null,
+    currentExitGateVehicleId: null,
 
     setSpots: (spots) => set({ parkingSpots: spots }),
 
@@ -143,9 +165,6 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         const state = get();
 
         // --- QUEUE PROCESSING ---
-        // We process Entry and Exit queues INDEPENDENTLY.
-        // The Gate Mutex (in useVehicleMovement) handles the physical bottleneck.
-        // Here we just ensure we fill the "Visible" queues from the "Virtual" backlogs up to capacity.
 
         // 1. Process Entry Backlog
         const visibleEntryCount = state.vehicles.filter(v =>
@@ -157,9 +176,7 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
 
             const unoccupiedSpots = state.parkingSpots.filter((spot) => !spot.occupied);
 
-            // Only spawn if there is a spot available (Capacity Constraint)
             if (unoccupiedSpots.length > 0) {
-                // Find nearest spot logic
                 let nearestSpot = unoccupiedSpots[0];
                 let minScore = Math.abs(nearestSpot.position.x) + Math.abs(nearestSpot.laneZ) * 0.5;
                 for (const spot of unoccupiedSpots) {
@@ -196,8 +213,6 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
                     vehicles: [...state.vehicles, vehicleInstance],
                     virtualEntryBacklog: remainingBacklog
                 });
-            } else {
-                // No spots, keep in backlog
             }
         }
 
@@ -227,11 +242,6 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
                                 state: 'moving'
                             } : v
                         ),
-                        // Spot becomes free immediately upon 'startExiting'? 
-                        // Or when they leave? 
-                        // Usually 'occupied' implies 'reserved for this car'. 
-                        // If we set occupied: false here, a new car might spawn for it.
-                        // That matches "Capacity" logic. The exiting car is "leaving the spot".
                         parkingSpots: state.parkingSpots.map(s =>
                             s.id === vehicle.spotId ? { ...s, occupied: false } : s
                         )
@@ -345,54 +355,78 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         }
     },
 
-    // --- Gate Control Implementations ---
+    // --- ENTRY Gate Control Implementations ---
 
-    requestGateAccess: (vehicleId: string) => {
+    requestEntryGateAccess: (vehicleId: string) => {
         const state = get();
 
-        if (state.gateState === GateState.IDLE) {
-            const requestingVehicle = state.vehicles.find(v => v.id === vehicleId);
-            if (!requestingVehicle) return false;
-
-            // PRIORITY CHECK:
-            // If this is an ENTRY request, check if there are any active EXITING vehicles.
-            // If yes, Deny Entry to let Exit proceed (even if Exit hasn't requested yet).
-            if (!requestingVehicle.isExiting) {
-                const hasActiveExits = state.vehicles.some(v => v.isExiting && v.state === 'moving');
-                if (hasActiveExits) {
-                    console.log(`[Gate] Access Denied to ${vehicleId} (Exit Priority)`);
-                    return false;
-                }
-            }
-
-            console.log(`[Gate] Access granted to ${vehicleId}`);
+        if (state.entryGateState === GateState.IDLE) {
+            console.log(`[Entry Gate] Access granted to ${vehicleId}`);
             set({
-                gateState: GateState.OPENING,
-                currentGateVehicleId: vehicleId
+                entryGateState: GateState.OPENING,
+                currentEntryGateVehicleId: vehicleId
             });
             return true;
         }
         return false;
     },
 
-    notifyGateOpen: () => {
-        console.log('[Gate] Gate is OPEN');
-        set({ gateState: GateState.OPEN });
+    notifyEntryGateOpen: () => {
+        console.log('[Entry Gate] Gate is OPEN');
+        set({ entryGateState: GateState.OPEN });
     },
 
-    notifyPassageComplete: (vehicleId: string) => {
+    notifyEntryPassageComplete: (vehicleId: string) => {
         const state = get();
-        if (state.currentGateVehicleId === vehicleId) {
-            console.log(`[Gate] Passage complete for ${vehicleId}, closing gate.`);
-            set({ gateState: GateState.CLOSING });
+        if (state.currentEntryGateVehicleId === vehicleId) {
+            console.log(`[Entry Gate] Passage complete for ${vehicleId}, closing gate.`);
+            set({ entryGateState: GateState.CLOSING });
         }
     },
 
-    notifyGateClosed: () => {
-        console.log('[Gate] Gate is CLOSED (IDLE)');
+    notifyEntryGateClosed: () => {
+        console.log('[Entry Gate] Gate is CLOSED (IDLE)');
         set({
-            gateState: GateState.IDLE,
-            currentGateVehicleId: null
+            entryGateState: GateState.IDLE,
+            currentEntryGateVehicleId: null
+        });
+        get().processQueues();
+    },
+
+    // --- EXIT Gate Control Implementations ---
+
+    requestExitGateAccess: (vehicleId: string) => {
+        const state = get();
+
+        if (state.exitGateState === GateState.IDLE) {
+            console.log(`[Exit Gate] Access granted to ${vehicleId}`);
+            set({
+                exitGateState: GateState.OPENING,
+                currentExitGateVehicleId: vehicleId
+            });
+            return true;
+        }
+        return false;
+    },
+
+    notifyExitGateOpen: () => {
+        console.log('[Exit Gate] Gate is OPEN');
+        set({ exitGateState: GateState.OPEN });
+    },
+
+    notifyExitPassageComplete: (vehicleId: string) => {
+        const state = get();
+        if (state.currentExitGateVehicleId === vehicleId) {
+            console.log(`[Exit Gate] Passage complete for ${vehicleId}, closing gate.`);
+            set({ exitGateState: GateState.CLOSING });
+        }
+    },
+
+    notifyExitGateClosed: () => {
+        console.log('[Exit Gate] Gate is CLOSED (IDLE)');
+        set({
+            exitGateState: GateState.IDLE,
+            currentExitGateVehicleId: null
         });
         get().processQueues();
     }

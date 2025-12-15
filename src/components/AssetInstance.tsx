@@ -13,6 +13,7 @@ interface AssetInstanceProps {
     texturePath?: string;
     preserveMaterials?: boolean;
     baseColor?: string;
+    basePath?: string;
 }
 
 const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
@@ -22,9 +23,10 @@ const InnerAssetInstance: React.FC<AssetInstanceProps> = ({
     scale = 1,
     texturePath,
     preserveMaterials = false,
-    baseColor
+    baseColor,
+    basePath = PATHS.BASE
 }) => {
-    const fbx = useFBX(PATHS.BASE + url);
+    const fbx = useFBX(basePath + url);
     const texPathToUse = texturePath || PATHS.TEXTURE_DEFAULT;
     const texture = useTexture(texPathToUse);
 

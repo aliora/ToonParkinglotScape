@@ -21,4 +21,9 @@ export interface IVehicleData {
     image: string;
     color: string;
     state: 'moving' | 'parked';
+    modelUrl: string;
+    modelScale: number;
+    modelRotation?: [number, number, number];
+    modelTexture?: string;
+    modelYOffset?: number;
 }

@@ -1,5 +1,5 @@
 import { useRef, useMemo } from 'react';
-import { Mesh } from 'three';
+import { Group } from 'three';
 import type { VehicleInstance } from '../../stores/useTrafficStore';
 import { useVehicleMovement } from '../../hooks/useVehicleMovement';
 import { VehicleView } from './VehicleView';
@@ -9,7 +9,7 @@ interface VehicleControllerProps {
 }
 
 export function VehicleController({ data }: VehicleControllerProps) {
-    const meshRef = useRef<Mesh>(null);
+    const meshRef = useRef<Group>(null);
 
     // Vehicle dimensions logic
     const dimensions: [number, number, number] = useMemo(() => {
@@ -41,6 +41,11 @@ export function VehicleController({ data }: VehicleControllerProps) {
             vehicleHeight={vehicleHeight}
             color={data.color}
             position={{ x: data.currentPosition.x, z: data.currentPosition.z }}
+            modelUrl={data.modelUrl}
+            modelScale={data.modelScale}
+            modelRotation={data.modelRotation}
+            modelTexture={data.modelTexture}
+            modelYOffset={data.modelYOffset}
         />
     );
 }

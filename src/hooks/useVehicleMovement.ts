@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Vector3, Mesh } from 'three';
+import { Vector3, Mesh, Group } from 'three';
 import type { VehicleInstance } from '../stores/useTrafficStore';
 import { useTrafficStore, GateState } from '../stores/useTrafficStore';
 import {
@@ -12,23 +12,36 @@ import {
 interface UseVehicleMovementProps {
     data: VehicleInstance;
     vehicleHeight: number;
-    meshRef: React.RefObject<Mesh | null>;
+    meshRef: React.RefObject<Group | Mesh | null>;
 }
 
-// Gate X position is around -14.
-const GATE_X_POS = -14;
+import { TRAFFIC_CONFIG } from '../config/constants';
+
+// Gate X position is around -14. (Should ideally come from config, but keeping it local for now if matches config)
+// Or use TRAFFIC_CONFIG.BARRIER_X if available
+const GATE_X_POS = TRAFFIC_CONFIG.BARRIER_X;
 const GATE_STOP_DISTANCE = 6; // Stop this far before
+
+// Lane Configuration (Swapped)
+const ENTRY_LANE_Z = -TRAFFIC_CONFIG.LANE_OFFSET;
+const EXIT_LANE_Z = TRAFFIC_CONFIG.LANE_OFFSET;
 
 export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleMovementProps) {
     const updateVehicleState = useTrafficStore((s) => s.updateVehicleState);
     const updateVehiclePosition = useTrafficStore((s) => s.updateVehiclePosition);
     const removeVehicle = useTrafficStore((s) => s.removeVehicle);
 
-    // Gate Actions
-    const requestGateAccess = useTrafficStore((s) => s.requestGateAccess);
-    const notifyPassageComplete = useTrafficStore((s) => s.notifyPassageComplete);
-    const gateState = useTrafficStore((s) => s.gateState);
-    const currentGateVehicleId = useTrafficStore((s) => s.currentGateVehicleId);
+    // Gate Actions - ENTRY
+    const requestEntryGateAccess = useTrafficStore((s) => s.requestEntryGateAccess);
+    const notifyEntryPassageComplete = useTrafficStore((s) => s.notifyEntryPassageComplete);
+    const entryGateState = useTrafficStore((s) => s.entryGateState);
+    const currentEntryGateVehicleId = useTrafficStore((s) => s.currentEntryGateVehicleId);
+
+    // Gate Actions - EXIT
+    const requestExitGateAccess = useTrafficStore((s) => s.requestExitGateAccess);
+    const notifyExitPassageComplete = useTrafficStore((s) => s.notifyExitPassageComplete);
+    const exitGateState = useTrafficStore((s) => s.exitGateState);
+    const currentExitGateVehicleId = useTrafficStore((s) => s.currentExitGateVehicleId);
 
     const [entryWaypointIndex, setEntryWaypointIndex] = useState(1);
     const [exitWaypointIndex, setExitWaypointIndex] = useState(0);
@@ -64,7 +77,7 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         }
     }, [data.id, updateVehiclePosition]);
 
-    const vehicles = useTrafficStore((s) => s.vehicles); // Need access to all vehicles for collision check
+    const vehicles = useTrafficStore((s) => s.vehicles);
 
     useFrame((_, delta) => {
         if (!meshRef.current) return;
@@ -73,8 +86,9 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         const currentZ = mesh.position.z;
 
         // --- COLLISION AVOIDANCE (Natural Queue) ---
-        // Only valid if we are on the 'Main Lane' (Approx Z = -5)
-        const onMainLane = Math.abs(currentZ - (-5)) < 1.5;
+        // Determine current lane Z based on direction
+        const myLaneZ = data.isExiting ? EXIT_LANE_Z : ENTRY_LANE_Z;
+        const onMainLane = Math.abs(currentZ - myLaneZ) < 1.5;
         let blockedByCar = false;
 
         if (onMainLane) {
@@ -84,25 +98,20 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
             vehicles.forEach(other => {
                 if (other.id === data.id) return;
                 // Only avoid vehicles moving in the SAME direction.
-                // Mutex logic handles head-on contention at the gate.
                 if (other.isExiting !== data.isExiting) return;
 
                 // Simple state check: only care about moving cars or waiting cars
                 if (other.state === 'parked' && !other.isExiting) return;
 
-                // We don't have direct access to other mesh positions here without querying store or scene.
-                // Store has 'currentPosition' which is updated every 10 frames.
-                // This is slightly laggy but acceptable for avoiding overlap (better than nothing).
-
                 const otherX = other.currentPosition.x;
                 const otherZ = other.currentPosition.z;
 
-                // Check if other car is on main lane
-                if (Math.abs(otherZ - (-5)) < 1.5) {
+                // Check if other car is on SAME lane
+                if (Math.abs(otherZ - myLaneZ) < 1.5) {
                     // Check Directionality
                     if (!data.isExiting) {
                         // Entry: Moving +X (-50 -> -5). Car Ahead is X > My X.
-                        if (otherX > currentX && otherX < currentX + 8) { // 8m lookahead
+                        if (otherX > currentX && otherX < currentX + 8) {
                             const dist = otherX - currentX;
                             if (dist < closestDist) closestDist = dist;
                         }
@@ -126,7 +135,6 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         }
 
         // --- GATE CHECK LOGIC ---
-        // Determine if we are approaching gate
         let approachingGate = false;
         let distToGate = 999;
 
@@ -138,10 +146,9 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                     approachingGate = true;
                 }
             } else {
-                // Passed Logic
                 if (!hasPassedGate) {
                     setHasPassedGate(true);
-                    notifyPassageComplete(data.id);
+                    notifyEntryPassageComplete(data.id);
                 }
             }
         }
@@ -156,33 +163,32 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
             } else {
                 if (!hasPassedGate) {
                     setHasPassedGate(true);
-                    notifyPassageComplete(data.id);
+                    notifyExitPassageComplete(data.id);
                 }
             }
         }
 
         // If Approaching Gate, Handle Access
         if (approachingGate) {
-            const myTurn = currentGateVehicleId === data.id;
-
-            if (!myTurn) {
-                // Request Access if not already waiting?
-                // Or just try every frame (throttled)?
-                // requestGateAccess returns boolean.
-                const granted = requestGateAccess(data.id);
-                if (!granted) {
-                    // setIsWaitingForGate(true);
-                    return; // STOP Here
+            if (!data.isExiting) {
+                // --- ENTRY GATE LOGIC ---
+                const myTurn = currentEntryGateVehicleId === data.id;
+                if (!myTurn) {
+                    const granted = requestEntryGateAccess(data.id);
+                    if (!granted) return; // STOP
                 }
+                if (entryGateState !== GateState.OPEN) return; // STOP
+
+            } else {
+                // --- EXIT GATE LOGIC ---
+                const myTurn = currentExitGateVehicleId === data.id;
+                if (!myTurn) {
+                    const granted = requestExitGateAccess(data.id);
+                    if (!granted) return; // STOP
+                }
+                if (exitGateState !== GateState.OPEN) return; // STOP
             }
 
-            // If we have access, check if Gate Open
-            if (gateState !== GateState.OPEN) {
-                // setIsWaitingForGate(true);
-                return; // STOP Here (Wait for animation)
-            }
-
-            // setIsWaitingForGate(false);
             // Proceed!
         }
 
@@ -215,7 +221,7 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         const isLastWaypoint = currentIndex >= entryPath.length - 1;
 
         if (currentIndex < entryPath.length) {
-            // Smooth Parking Logic
+            // Smooth Parking Loigc
             if (isLastWaypoint) {
                 const currentPos = new Vector3(mesh.position.x, 0, mesh.position.z);
                 const targetPos = new Vector3(target.x, 0, target.z);

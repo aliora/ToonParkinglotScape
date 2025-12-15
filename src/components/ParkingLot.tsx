@@ -2,7 +2,7 @@
 import { useMemo, Suspense } from 'react';
 import { Plane, Box } from '@react-three/drei';
 import { useParkingLayout } from '../hooks/useParkingLayout';
-import { DIMENSIONS, COLORS, PARKING_FENCE } from '../config/constants';
+import { DIMENSIONS, COLORS, PARKING_FENCE, TRAFFIC_CONFIG } from '../config/constants';
 import { AssetInstance } from './AssetInstance';
 import { BarrierGate } from './environment/BarrierGate';
 
@@ -131,7 +131,7 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
 
     return (
         <group>
-            {/* Ground Plane */}
+            {/* Ground Plane - Restored */}
             <Plane
                 args={[groundWidth, groundDepth]}
                 rotation={[-Math.PI / 2, 0, 0]}
@@ -141,7 +141,16 @@ export const ParkingLot: React.FC<ParkingLotProps> = ({ capacity = 10 }) => {
                 <meshStandardMaterial color={COLORS.GROUND} roughness={0.8} />
             </Plane>
 
-            <BarrierGate position={[-14, 0, -5]} />
+            {/* Barriers placed using Config */}
+
+            {/* Exit: Bottom Lane. Barrier Base at +OFFSET. Rotated 180 (PI) */}
+            <group position={[TRAFFIC_CONFIG.BARRIER_X, 0, TRAFFIC_CONFIG.BARRIER_Z_BASE]} rotation={[0, Math.PI, 0]}>
+                <BarrierGate position={[0, 0, 0]} type="exit" />
+            </group>
+
+            {/* Entry: Top Lane. Barrier Base at -OFFSET. Default Rotation */}
+            <BarrierGate position={[TRAFFIC_CONFIG.BARRIER_X, 0, -TRAFFIC_CONFIG.BARRIER_Z_BASE]} type="entry" />
+
             {lines}
             <Suspense fallback={null}>
                 {fences}

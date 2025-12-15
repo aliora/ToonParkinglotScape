@@ -12,6 +12,36 @@ export const DIMENSIONS = {
     BUILDING_EXCLUSION_BUFFER: 10, // Buffer distance from buildings
 };
 
+import { VehicleType } from '../types/VehicleTypes';
+
+export const VEHICLE_MODELS: Record<VehicleType, { model: string; scale: number; rotation?: [number, number, number]; texture?: string; yOffset?: number }[]> = {
+    [VehicleType.CAR]: [
+        { model: 'Car_1_2.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Car_1_3.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Car_3_1.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Taxi.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+    ],
+    [VehicleType.MINIBUS]: [
+        { model: 'Bus_3.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+    ],
+    [VehicleType.BUS]: [
+        { model: 'Bus_3.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+    ],
+    [VehicleType.PICKUP]: [
+        { model: 'Pickup_3.fbx', scale: 0.016, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+    ],
+    [VehicleType.TRUCK]: [
+        { model: 'Truck_3.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 },
+        { model: 'Ambulance.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+    ],
+    [VehicleType.HEAVYTRUCK]: [
+        { model: 'Fire_Truck.fbx', scale: 0.02, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+    ],
+    [VehicleType.MOTORCYCLE]: [
+        { model: 'Motorcycle.fbx', scale: 0.012, rotation: [0, 90, 0], texture: '/Texture/tex.png', yOffset: 0 }
+    ],
+};
+
 export const COLORS = {
     GROUND: '#333333',
     LINE: '#FFFFFF',
@@ -20,6 +50,7 @@ export const COLORS = {
 
 export const PATHS = {
     BASE: '/CityEnvironment/',
+    VEHICLES: '/Vehicles/',
     TEXTURE_DEFAULT: '/Texture/tex.png',
     TEXTURE_NATURE: '/Texture/TXT_LowPolyEssentials.png',
 };
@@ -143,4 +174,12 @@ export const ASSETS = {
         'Cloud_2.fbx',
         'Cloud_3.fbx'
     ]
+};
+export const TRAFFIC_CONFIG = {
+    ROAD_WIDTH: 22,           // Total width of the two-lane road
+    LANE_OFFSET: 2,          // Distance from center (Z=0) to lane center (+/-)
+    BARRIER_X: -13.6,          // X position of the barriers
+    BARRIER_Z_BASE: 8,       // Distance from center (Z=0) to barrier base position (+/-)
+    BARRIER_ARM_LENGTH: 6.4, // Length of the barrier arm
+    SPAWN_X: -60,            // X position for spawning vehicles
 };

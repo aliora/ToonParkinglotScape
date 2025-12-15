@@ -10,7 +10,7 @@ const panelStyles: React.CSSProperties = {
     borderRadius: '12px',
     color: 'white',
     fontFamily: 'Inter, system-ui, sans-serif',
-    minWidth: '200px',
+    minWidth: '240px',
     maxHeight: '80vh',
     overflowY: 'auto',
     zIndex: 1000,
@@ -86,6 +86,8 @@ export function ControlPanel() {
         return 'moving';
     };
 
+    const store = useTrafficStore.getState();
+
     return (
         <div style={panelStyles}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 700 }}>
@@ -130,23 +132,41 @@ export function ControlPanel() {
             <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     🚦 System Monitor
-                    <span style={{ fontSize: '10px', opacity: 0.5, marginLeft: 'auto' }}>Real-time</span>
                 </h4>
 
-                {/* Gate Status */}
+                {/* Entry Gate Status */}
                 <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>GATE CONTROL</div>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px', color: '#60a5fa' }}>ENTRY GATE</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '4px' }}>
                             <div style={{ opacity: 0.5, fontSize: '10px' }}>STATE</div>
-                            <div style={{ fontWeight: 700, color: useTrafficStore.getState().gateState === 'OPEN' ? '#4ade80' : '#fcd34d' }}>
-                                {useTrafficStore.getState().gateState}
+                            <div style={{ fontWeight: 700, color: store.entryGateState === 'OPEN' ? '#4ade80' : '#fcd34d' }}>
+                                {store.entryGateState}
                             </div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '4px' }}>
-                            <div style={{ opacity: 0.5, fontSize: '10px' }}>MUTEX</div>
+                            <div style={{ opacity: 0.5, fontSize: '10px' }}>ACCESS</div>
                             <div style={{ fontWeight: 700 }}>
-                                {useTrafficStore.getState().currentGateVehicleId ? '🔒 BUSY' : '🔓 FREE'}
+                                {store.currentEntryGateVehicleId ? '🔒 BUSY' : '🔓 FREE'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Exit Gate Status */}
+                <div style={{ marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px', color: '#f87171' }}>EXIT GATE</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '4px' }}>
+                            <div style={{ opacity: 0.5, fontSize: '10px' }}>STATE</div>
+                            <div style={{ fontWeight: 700, color: store.exitGateState === 'OPEN' ? '#4ade80' : '#fcd34d' }}>
+                                {store.exitGateState}
+                            </div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '4px' }}>
+                            <div style={{ opacity: 0.5, fontSize: '10px' }}>ACCESS</div>
+                            <div style={{ fontWeight: 700 }}>
+                                {store.currentExitGateVehicleId ? '🔒 BUSY' : '🔓 FREE'}
                             </div>
                         </div>
                     </div>
@@ -158,16 +178,16 @@ export function ControlPanel() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
                         {/* Entry Stats */}
                         <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '6px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                            <div style={{ opacity: 0.8, fontSize: '10px', color: '#60a5fa' }}>ENTRY QUEUE</div>
-                            <div>Visual: <b>{vehicles.filter(v => !v.isExiting && v.state !== 'parked').length}</b> / 3</div>
-                            <div>Backlog: <b>{useTrafficStore.getState().virtualEntryBacklog.length}</b></div>
+                            <div style={{ opacity: 0.8, fontSize: '10px', color: '#60a5fa' }}>ENTRY Q</div>
+                            <div>Vis: <b>{vehicles.filter(v => !v.isExiting && v.state !== 'parked').length}</b> / 3</div>
+                            <div style={{ fontSize: '10px' }}>Log: {useTrafficStore.getState().virtualEntryBacklog.length}</div>
                         </div>
 
                         {/* Exit Stats */}
                         <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '6px', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                            <div style={{ opacity: 0.8, fontSize: '10px', color: '#f87171' }}>EXIT QUEUE</div>
-                            <div>Visual: <b>{vehicles.filter(v => v.isExiting && v.state === 'moving').length}</b> / 3</div>
-                            <div style={{ opacity: 0.5 }}>Pending: {vehicles.filter(v => v.isPendingExit).length}</div>
+                            <div style={{ opacity: 0.8, fontSize: '10px', color: '#f87171' }}>EXIT Q</div>
+                            <div>Vis: <b>{vehicles.filter(v => v.isExiting && v.state === 'moving').length}</b> / 3</div>
+                            <div style={{ fontSize: '10px' }}>Pend: {vehicles.filter(v => v.isPendingExit).length}</div>
                         </div>
                     </div>
                 </div>
