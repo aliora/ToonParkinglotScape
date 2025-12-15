@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Vector3 } from 'three';
 import type { ParkingSpot } from '../../stores/useTrafficStore';
 import { useTrafficStore } from '../../stores/useTrafficStore';
-import { VehicleBox } from './VehicleBox';
+import { VehicleController } from './VehicleController';
 import { useParkingLayout } from '../../hooks/useParkingLayout';
 import { DIMENSIONS } from '../../config/constants';
 
@@ -72,7 +72,7 @@ export function VehicleManager({ capacity }: VehicleManagerProps) {
     return (
         <group name="vehicle-manager">
             {vehicles.map((vehicle) => (
-                <VehicleBox key={vehicle.id} data={vehicle} />
+                <VehicleController key={vehicle.id} data={vehicle} />
             ))}
         </group>
     );
