@@ -89,12 +89,21 @@ const WindStreak = ({
         }
     });
 
+    // Global fade factor for the whole trail to prevent popping at the end
+    // Fade In (0-0.2), Sustain, Fade Out (0.8-1.2)
+    const fadeFactor = progress < 0.2
+        ? progress / 0.2
+        : (progress > 0.8 ? 1 - (progress - 0.8) / 0.4 : 1);
+
+    // Ensure it doesn't go below 0
+    const cleanFade = Math.max(0, fadeFactor);
+
     return (
         <Trail
-            width={width * 0.2} // Pixel to World approximation
+            width={width * 0.2 * cleanFade} // Pixel to World approximation * Fade
             length={12} // Number of segments in trail
             color={color}
-            attenuation={(t) => t} // Linear fade: t goes from 0 (tail) to 1 (head)
+            attenuation={(t) => t * 0.8} // Linear fade: t goes from 0 (tail) to 1 (head). Multiply to soften.
             target={headRef as any}
         >
             <group ref={headRef} />

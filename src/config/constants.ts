@@ -189,7 +189,7 @@ export const WIND_CONFIG = {
     spawnChance: 0.5,      // Probability of scanning for a target per frame
     speed: 0.6,            // Animation speed multiplier
     line: {
-        width: 3,          // Line width in pixels
+        width: 5,          // Line width in pixels
         length: 25,        // Length of the path
         color: '#FFFFFFFF',
         startHeight: 15,    // Height offset from tree base
