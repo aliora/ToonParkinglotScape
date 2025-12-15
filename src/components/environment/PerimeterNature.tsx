@@ -51,6 +51,7 @@ export const PerimeterNature: React.FC<Props> = ({ boundMinX, boundMaxX, boundMi
                         rotation={[bushConfig.rotation[0], rotY, bushConfig.rotation[2]]}
                         scale={randomScale}
                         texturePath={texturePath}
+                        wind={true}
                     />
                 );
             }

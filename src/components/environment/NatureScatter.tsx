@@ -131,6 +131,7 @@ export const NatureScatter: React.FC<Props> = ({ boundMinX, boundMaxX, boundMinZ
                     texturePath={item.preserveMaterials ? undefined : texturePath}
                     preserveMaterials={item.preserveMaterials}
                     baseColor={(item as any).baseColor || undefined}
+                    wind={item.type === 'tree' || item.type === 'bush'}
                 />
             );
         };
