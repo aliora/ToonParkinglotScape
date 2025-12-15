@@ -5,6 +5,31 @@ import { VehicleType } from '../types/VehicleTypes';
 import { createRandomVehicle } from '../utils/VehicleFactory';
 import { DIMENSIONS } from '../config/constants';
 
+// --- CONFIGURATION CONSTANTS ---
+const MAX_VISIBLE_ENTRY_QUEUE = 3;
+const MAX_VISIBLE_EXIT_QUEUE = 3;
+const ENTRY_LANE_Z = -5;
+const SPAWN_POINT = new Vector3(-50, 0, ENTRY_LANE_Z);
+const JUNCTION_POINT_X = -5;
+
+// --- TYPES & INTERFACES ---
+
+export const GateState = {
+    IDLE: 'IDLE',
+    OPENING: 'OPENING',
+    OPEN: 'OPEN',
+    CLOSING: 'CLOSING',
+    LOCKED: 'LOCKED'
+} as const;
+
+export type GateState = typeof GateState[keyof typeof GateState];
+
+export interface VirtualVehicleRequest {
+    id: string;
+    type?: VehicleType;
+    requestTime: number;
+}
+
 export interface ParkingSpot {
     id: string;
     position: Vector3;
@@ -25,11 +50,19 @@ export interface VehicleInstance extends IVehicleData {
     // Exit fields
     isExiting: boolean;
     exitWaypoints: Vector3[];
+    // State machine extensions
+    isPendingExit?: boolean; // Waiting in spot for exit queue space
 }
 
 interface TrafficState {
     parkingSpots: ParkingSpot[];
     vehicles: VehicleInstance[];
+
+    // Virtual Queue & Gate State
+    virtualEntryBacklog: VirtualVehicleRequest[];
+    gateState: GateState;
+    currentGateVehicleId: string | null;
+
     spawnPoint: Vector3;
     blockHeight: number;
     pairHeight: number;
@@ -37,41 +70,37 @@ interface TrafficState {
 
     setSpots: (spots: ParkingSpot[]) => void;
     setLayoutInfo: (blockHeight: number, pairHeight: number, numPairs: number) => void;
-    spawnVehicle: (type?: VehicleType) => VehicleInstance | null;
+
+    // Modified Actions
+    spawnVehicle: (type?: VehicleType) => void;
     removeVehicle: (id: string) => void;
     updateVehicleState: (id: string, state: 'moving' | 'parked') => void;
     updateVehiclePosition: (id: string, position: Vector3) => void;
     startExitingVehicle: (id: string) => void;
+
+    // Gate Control Actions
+    requestGateAccess: (vehicleId: string) => boolean;
+    notifyGateOpen: () => void;
+    notifyPassageComplete: (vehicleId: string) => void;
+    notifyGateClosed: () => void;
+
+    // Internal Helper
+    processQueues: () => void;
 }
 
-// Lane Z position (single lane for both entry and exit)
-const ENTRY_LANE_Z = -5;
-
-const SPAWN_POINT = new Vector3(-50, 0, ENTRY_LANE_Z);
-const JUNCTION_POINT_X = -5;
+// --- HELPER FUNCTIONS ---
 
 function generateWaypoints(spot: ParkingSpot): Vector3[] {
     const waypoints: Vector3[] = [];
     const { SLOT_DEPTH } = DIMENSIONS;
 
     // Direct path to parking spot
-    // 1. Start point (spawn)
     waypoints.push(SPAWN_POINT.clone());
-
-    // 2. Junction point on entry lane
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, ENTRY_LANE_Z));
-
-    // 3. Turn to spot's lane
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
-
-    // 4. Move along lane to spot X
     waypoints.push(new Vector3(spot.position.x, 0, spot.laneZ));
-
-    // 5. Approach spot
     const approachOffset = spot.isTopRow ? SLOT_DEPTH / 2 + 0.5 : -(SLOT_DEPTH / 2 + 0.5);
     waypoints.push(new Vector3(spot.position.x, 0, spot.position.z + approachOffset));
-
-    // 6. Final position in spot
     waypoints.push(spot.position.clone());
 
     return waypoints;
@@ -81,28 +110,17 @@ function generateExitWaypoints(spot: ParkingSpot): Vector3[] {
     const waypoints: Vector3[] = [];
     const { SLOT_DEPTH } = DIMENSIONS;
 
-    // Exit path is the REVERSE of entry path
-    // Entry: spawn -> junction -> lane -> spot
-    // Exit:  spot -> lane -> junction -> spawn
-
-    // 1. Back out of spot to approach position
     const approachOffset = spot.isTopRow ? SLOT_DEPTH / 2 + 0.5 : -(SLOT_DEPTH / 2 + 0.5);
     waypoints.push(new Vector3(spot.position.x, 0, spot.position.z + approachOffset));
-
-    // 2. Move to lane
     waypoints.push(new Vector3(spot.position.x, 0, spot.laneZ));
-
-    // 3. Move to junction (same as entry junction)
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
-
-    // 4. Turn to entry lane (z=-5, same as entry)
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, ENTRY_LANE_Z));
-
-    // 5. Exit point (same as spawn point)
     waypoints.push(SPAWN_POINT.clone());
 
     return waypoints;
 }
+
+// --- STORE IMPLEMENTATION ---
 
 export const useTrafficStore = create<TrafficState>((set, get) => ({
     parkingSpots: [],
@@ -112,82 +130,158 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     pairHeight: 0,
     numPairs: 0,
 
+    virtualEntryBacklog: [],
+    gateState: GateState.IDLE,
+    currentGateVehicleId: null,
+
     setSpots: (spots) => set({ parkingSpots: spots }),
 
     setLayoutInfo: (blockHeight, pairHeight, numPairs) =>
         set({ blockHeight, pairHeight, numPairs }),
 
-    spawnVehicle: (type?: VehicleType) => {
+    processQueues: () => {
         const state = get();
-        const unoccupiedSpots = state.parkingSpots.filter((spot) => !spot.occupied);
 
-        if (unoccupiedSpots.length === 0) {
-            console.warn('No available parking spots');
-            return null;
-        }
+        // --- QUEUE PROCESSING ---
+        // We process Entry and Exit queues INDEPENDENTLY.
+        // The Gate Mutex (in useVehicleMovement) handles the physical bottleneck.
+        // Here we just ensure we fill the "Visible" queues from the "Virtual" backlogs up to capacity.
 
-        // Find nearest spot
-        let nearestSpot = unoccupiedSpots[0];
-        let minScore = Math.abs(nearestSpot.position.x) + Math.abs(nearestSpot.laneZ) * 0.5;
+        // 1. Process Entry Backlog
+        const visibleEntryCount = state.vehicles.filter(v =>
+            !v.isExiting && v.state !== 'parked'
+        ).length;
 
-        for (const spot of unoccupiedSpots) {
-            const score = spot.position.x + Math.abs(spot.laneZ) * 0.5;
-            if (score < minScore) {
-                minScore = score;
-                nearestSpot = spot;
+        if (visibleEntryCount < MAX_VISIBLE_ENTRY_QUEUE && state.virtualEntryBacklog.length > 0) {
+            const [nextRequest, ...remainingBacklog] = state.virtualEntryBacklog;
+
+            const unoccupiedSpots = state.parkingSpots.filter((spot) => !spot.occupied);
+
+            // Only spawn if there is a spot available (Capacity Constraint)
+            if (unoccupiedSpots.length > 0) {
+                // Find nearest spot logic
+                let nearestSpot = unoccupiedSpots[0];
+                let minScore = Math.abs(nearestSpot.position.x) + Math.abs(nearestSpot.laneZ) * 0.5;
+                for (const spot of unoccupiedSpots) {
+                    const score = spot.position.x + Math.abs(spot.laneZ) * 0.5;
+                    if (score < minScore) {
+                        minScore = score;
+                        nearestSpot = spot;
+                    }
+                }
+
+                const waypoints = generateWaypoints(nearestSpot);
+                const vehicleData = createRandomVehicle(nextRequest.type);
+
+                const targetRotation = nearestSpot.isTopRow ? Math.PI : 0;
+                const vehicleInstance: VehicleInstance = {
+                    ...vehicleData,
+                    targetPosition: nearestSpot.position.clone(),
+                    targetRotation,
+                    spotId: nearestSpot.id,
+                    startPosition: SPAWN_POINT.clone(),
+                    currentPosition: SPAWN_POINT.clone(),
+                    waypoints,
+                    isExiting: false,
+                    exitWaypoints: [],
+                    state: 'moving'
+                };
+
+                console.log(`[Traffic] Spawning backlog vehicle ${vehicleInstance.id}`);
+
+                set({
+                    parkingSpots: state.parkingSpots.map((spot) =>
+                        spot.id === nearestSpot.id ? { ...spot, occupied: true } : spot
+                    ),
+                    vehicles: [...state.vehicles, vehicleInstance],
+                    virtualEntryBacklog: remainingBacklog
+                });
+            } else {
+                // No spots, keep in backlog
             }
         }
 
-        const waypoints = generateWaypoints(nearestSpot);
-        const vehicleData = createRandomVehicle(type);
+        // 2. Process Pending Exits
+        const visibleExitCount = state.vehicles.filter(v =>
+            v.isExiting && v.state === 'moving'
+        ).length;
 
-        // Calculate target rotation based on spot row
-        // Top row (North) needs to face South (PI)? No, wait.
-        // Lane is Z, Spot is Z +/- offset.
-        // If spot is 'top row' (pairIndex * pairHeight - offset), it has smaller Z than Lane.
-        // Vehicle moves from Lane (+Z relative to spot) to Spot (-Z direction).
-        // So heading is -Z. Rotation should be Math.PI.
-        // If spot is 'bottom row', it has larger Z than Lane.
-        // Vehicle moves from Lane (-Z relative to spot) to Spot (+Z direction).
-        // So heading is +Z. Rotation should be 0.
-        const targetRotation = nearestSpot.isTopRow ? Math.PI : 0;
+        if (visibleExitCount < MAX_VISIBLE_EXIT_QUEUE) {
+            const pendingExitVehicle = state.vehicles.find(v => v.isPendingExit);
 
-        const vehicleInstance: VehicleInstance = {
-            ...vehicleData,
-            targetPosition: nearestSpot.position.clone(),
-            targetRotation,
-            spotId: nearestSpot.id,
-            startPosition: SPAWN_POINT.clone(),
-            currentPosition: SPAWN_POINT.clone(),
-            waypoints,
-            isExiting: false,
-            exitWaypoints: [],
-        };
+            if (pendingExitVehicle) {
+                console.log(`[Traffic] releasing pending exit vehicle ${pendingExitVehicle.id}`);
+                const vehicle = pendingExitVehicle;
+                const spot = state.parkingSpots.find((s) => s.id === vehicle.spotId);
 
-        console.log(`[Traffic] Vehicle ${vehicleInstance.id} spawned, heading to spot ${nearestSpot.id}`);
+                if (spot) {
+                    const exitWaypoints = generateExitWaypoints(spot);
 
-        set((state) => ({
-            parkingSpots: state.parkingSpots.map((spot) =>
-                spot.id === nearestSpot.id ? { ...spot, occupied: true } : spot
-            ),
-            vehicles: [...state.vehicles, vehicleInstance],
-        }));
+                    set(state => ({
+                        vehicles: state.vehicles.map(v =>
+                            v.id === vehicle.id ? {
+                                ...v,
+                                isExiting: true,
+                                isPendingExit: false,
+                                exitWaypoints,
+                                state: 'moving'
+                            } : v
+                        ),
+                        // Spot becomes free immediately upon 'startExiting'? 
+                        // Or when they leave? 
+                        // Usually 'occupied' implies 'reserved for this car'. 
+                        // If we set occupied: false here, a new car might spawn for it.
+                        // That matches "Capacity" logic. The exiting car is "leaving the spot".
+                        parkingSpots: state.parkingSpots.map(s =>
+                            s.id === vehicle.spotId ? { ...s, occupied: false } : s
+                        )
+                    }));
+                }
+            }
+        }
+    },
 
-        return vehicleInstance;
+    spawnVehicle: (type?: VehicleType) => {
+        const state = get();
+
+        const visibleEntryCount = state.vehicles.filter(v =>
+            !v.isExiting && v.state !== 'parked'
+        ).length;
+
+        if (visibleEntryCount < MAX_VISIBLE_ENTRY_QUEUE) {
+            const unocc = state.parkingSpots.filter(s => !s.occupied);
+            if (unocc.length === 0) {
+                console.warn('No spots available for spawn');
+                return;
+            }
+
+            set(state => ({
+                virtualEntryBacklog: [...state.virtualEntryBacklog, {
+                    id: `req-${Date.now()}`,
+                    type,
+                    requestTime: Date.now()
+                }]
+            }));
+
+            get().processQueues();
+
+        } else {
+            console.log('[Traffic] Visible queue full, adding to backlog');
+            set(state => ({
+                virtualEntryBacklog: [...state.virtualEntryBacklog, {
+                    id: `req-${Date.now()}`,
+                    type,
+                    requestTime: Date.now()
+                }]
+            }));
+        }
     },
 
     removeVehicle: (id: string) => {
-        const state = get();
-        const vehicle = state.vehicles.find((v) => v.id === id);
-
-        if (!vehicle) return;
-
         set((state) => ({
-            parkingSpots: state.parkingSpots.map((spot) =>
-                spot.id === vehicle.spotId ? { ...spot, occupied: false } : spot
-            ),
             vehicles: state.vehicles.filter((v) => v.id !== id),
         }));
+        get().processQueues();
     },
 
     updateVehicleState: (id: string, newState: 'moving' | 'parked') => {
@@ -196,6 +290,10 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
                 v.id === id ? { ...v, state: newState } : v
             ),
         }));
+
+        if (newState === 'parked') {
+            get().processQueues();
+        }
     },
 
     updateVehiclePosition: (id: string, position: Vector3) => {
@@ -211,34 +309,91 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
         const vehicle = state.vehicles.find((v) => v.id === id);
 
         if (!vehicle || vehicle.state !== 'parked') {
-            console.warn(`[Traffic] Cannot start exit for vehicle ${id}: not found or not parked`);
+            console.warn(`[Traffic] Cannot start exit for vehicle ${id}`);
             return;
         }
 
-        const spot = state.parkingSpots.find((s) => s.id === vehicle.spotId);
-        if (!spot) {
-            console.warn(`[Traffic] Cannot find spot ${vehicle.spotId} for vehicle ${id}`);
-            return;
+        const visibleExitCount = state.vehicles.filter(v => v.isExiting && v.state === 'moving').length;
+
+        if (visibleExitCount < MAX_VISIBLE_EXIT_QUEUE) {
+            const spot = state.parkingSpots.find((s) => s.id === vehicle.spotId);
+            if (!spot) return;
+
+            const exitWaypoints = generateExitWaypoints(spot);
+            set((state) => ({
+                vehicles: state.vehicles.map((v) =>
+                    v.id === id
+                        ? {
+                            ...v,
+                            isExiting: true,
+                            exitWaypoints,
+                            state: 'moving' as const,
+                        }
+                        : v
+                ),
+                parkingSpots: state.parkingSpots.map((s) =>
+                    s.id === vehicle.spotId ? { ...s, occupied: false } : s
+                ),
+            }));
+        } else {
+            console.log(`[Traffic] Exit queue full, marking vehicle ${id} as PENDING_EXIT`);
+            set((state) => ({
+                vehicles: state.vehicles.map((v) =>
+                    v.id === id ? { ...v, isPendingExit: true } : v
+                ),
+            }));
         }
-
-        const exitWaypoints = generateExitWaypoints(spot);
-
-        console.log(`[Traffic] Vehicle ${id} starting exit`);
-
-        set((state) => ({
-            vehicles: state.vehicles.map((v) =>
-                v.id === id
-                    ? {
-                        ...v,
-                        isExiting: true,
-                        exitWaypoints,
-                        state: 'moving' as const,
-                    }
-                    : v
-            ),
-            parkingSpots: state.parkingSpots.map((s) =>
-                s.id === vehicle.spotId ? { ...s, occupied: false } : s
-            ),
-        }));
     },
+
+    // --- Gate Control Implementations ---
+
+    requestGateAccess: (vehicleId: string) => {
+        const state = get();
+
+        if (state.gateState === GateState.IDLE) {
+            const requestingVehicle = state.vehicles.find(v => v.id === vehicleId);
+            if (!requestingVehicle) return false;
+
+            // PRIORITY CHECK:
+            // If this is an ENTRY request, check if there are any active EXITING vehicles.
+            // If yes, Deny Entry to let Exit proceed (even if Exit hasn't requested yet).
+            if (!requestingVehicle.isExiting) {
+                const hasActiveExits = state.vehicles.some(v => v.isExiting && v.state === 'moving');
+                if (hasActiveExits) {
+                    console.log(`[Gate] Access Denied to ${vehicleId} (Exit Priority)`);
+                    return false;
+                }
+            }
+
+            console.log(`[Gate] Access granted to ${vehicleId}`);
+            set({
+                gateState: GateState.OPENING,
+                currentGateVehicleId: vehicleId
+            });
+            return true;
+        }
+        return false;
+    },
+
+    notifyGateOpen: () => {
+        console.log('[Gate] Gate is OPEN');
+        set({ gateState: GateState.OPEN });
+    },
+
+    notifyPassageComplete: (vehicleId: string) => {
+        const state = get();
+        if (state.currentGateVehicleId === vehicleId) {
+            console.log(`[Gate] Passage complete for ${vehicleId}, closing gate.`);
+            set({ gateState: GateState.CLOSING });
+        }
+    },
+
+    notifyGateClosed: () => {
+        console.log('[Gate] Gate is CLOSED (IDLE)');
+        set({
+            gateState: GateState.IDLE,
+            currentGateVehicleId: null
+        });
+        get().processQueues();
+    }
 }));
