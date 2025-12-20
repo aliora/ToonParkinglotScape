@@ -1,18 +1,18 @@
 <?php
 
-namespace Polat\ParkingVisualization;
+namespace Polat\ToonParkingLot;
 
 use Filament\Support\Assets\Js;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Livewire\Livewire;
-use Polat\ParkingVisualization\Livewire\ParkingVisualization;
+use Polat\ToonParkingLot\Livewire\ToonParkingLotVisualization;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class ParkingVisualizationServiceProvider extends PackageServiceProvider
+class ToonParkingLotServiceProvider extends PackageServiceProvider
 {
-    public static string $name = 'parking-visualization';
+    public static string $name = 'toon-parking-lot';
 
     public function configurePackage(Package $package): void
     {
@@ -28,12 +28,13 @@ class ParkingVisualizationServiceProvider extends PackageServiceProvider
         parent::packageBooted();
 
         // Register Livewire component
-        Livewire::component('parking-visualization', ParkingVisualization::class);
+        Livewire::component('toon-parking-lot', ToonParkingLotVisualization::class);
 
         // Register Filament assets
         FilamentAsset::register([
-            Js::make('parking-lot', __DIR__ . '/../resources/dist/parking-lot.iife.js'),
-            Css::make('parking-lot', __DIR__ . '/../resources/dist/parking-lot.css'),
-        ], package: 'polat/filament-parking-visualization');
+            Js::make('toon-parking-lot', __DIR__ . '/../resources/dist/toon-parking-lot.iife.js'),
+            Css::make('toon-parking-lot', __DIR__ . '/../resources/dist/toon-parking-lot.css'),
+        ], package: 'polat/toon-parking-lot');
     }
 }
+

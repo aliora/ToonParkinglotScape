@@ -1,6 +1,6 @@
 {
-    "name": "polat/filament-parking-visualization",
-    "description": "3D Parking Lot Visualization for Laravel Filament",
+    "name": "polat/toon-parking-lot",
+    "description": "3D Toon Parking Lot Visualization for Laravel Filament",
     "type": "library",
     "version": "1.0.0",
     "license": "MIT",
@@ -12,13 +12,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Polat\\ParkingVisualization\\": "src/"
+            "Polat\\ToonParkingLot\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Polat\\ParkingVisualization\\ParkingVisualizationServiceProvider"
+                "Polat\\ToonParkingLot\\ToonParkingLotServiceProvider"
             ]
         }
     },

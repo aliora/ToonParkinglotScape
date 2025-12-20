@@ -3,7 +3,7 @@
 return [
     /*
     |--------------------------------------------------------------------------
-    | Parking Visualization Configuration
+    | ToonParkingLot Configuration
     |--------------------------------------------------------------------------
     |
     | Configuration options for the 3D parking lot visualization.

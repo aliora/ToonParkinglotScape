@@ -1,17 +1,17 @@
 <?php
 
-namespace Polat\ParkingVisualization\Livewire;
+namespace Polat\ToonParkingLot\Livewire;
 
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
- * Parking Visualization Livewire Component
+ * ToonParkingLot Visualization Livewire Component
  * 
  * Embeds the 3D parking lot visualization and handles communication
  * between Laravel/Filament and the JavaScript visualization.
  */
-class ParkingVisualization extends Component
+class ToonParkingLotVisualization extends Component
 {
     /** @var int Parking lot capacity */
     public int $capacity = 20;
@@ -120,7 +120,7 @@ class ParkingVisualization extends Component
 
     public function render()
     {
-        return view('parking-visualization::parking-lot', [
+        return view('toon-parking-lot::parking-lot', [
             'config' => $this->config,
             'height' => $this->height,
         ]);

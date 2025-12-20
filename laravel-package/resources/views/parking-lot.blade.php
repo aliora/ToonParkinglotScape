@@ -1,9 +1,9 @@
-{{-- Parking Lot 3D Visualization Component --}}
+{{-- ToonParkingLot 3D Visualization Component --}}
 <div
-    x-data="parkingVisualization(@js($config))"
+    x-data="toonParkingLotVisualization(@js($config))"
     x-init="init()"
     wire:ignore
-    class="parking-visualization-container"
+    class="toon-parking-lot-container"
     style="width: 100%; height: {{ $height }}; background: #1a1a2e; border-radius: 8px; overflow: hidden; position: relative;"
 >
     <div x-ref="container" style="width: 100%; height: 100%;"></div>
@@ -36,26 +36,26 @@
 @push('scripts')
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('parkingVisualization', (config) => ({
+    Alpine.data('toonParkingLotVisualization', (config) => ({
         initialized: false,
         
         init() {
-            // Wait for ParkingLot script to load
-            const checkParkingLot = () => {
-                if (typeof window.ParkingLot !== 'undefined') {
-                    this.initParkingLot(config);
+            // Wait for ToonParkingLot script to load
+            const checkToonParkingLot = () => {
+                if (typeof window.ToonParkingLot !== 'undefined') {
+                    this.initToonParkingLot(config);
                 } else {
-                    setTimeout(checkParkingLot, 100);
+                    setTimeout(checkToonParkingLot, 100);
                 }
             };
-            checkParkingLot();
+            checkToonParkingLot();
         },
         
-        initParkingLot(config) {
+        initToonParkingLot(config) {
             const container = this.$refs.container;
             
             // Initialize the 3D visualization
-            window.ParkingLot.init(container, {
+            window.ToonParkingLot.init(container, {
                 capacity: config.capacity,
                 preParkedVehicles: config.vehicles || [],
                 autoTimeOfDay: config.autoTimeOfDay ?? true,
@@ -64,27 +64,27 @@ document.addEventListener('alpine:init', () => {
             
             // Listen for Livewire events
             Livewire.on('parking-add-vehicle', (data) => {
-                window.ParkingLot.addVehicle(data[0]);
+                window.ToonParkingLot.addVehicle(data[0]);
             });
             
             Livewire.on('parking-trigger-exit', (vehicleId) => {
-                window.ParkingLot.triggerExit(vehicleId[0]);
+                window.ToonParkingLot.triggerExit(vehicleId[0]);
             });
             
             Livewire.on('parking-remove-vehicle', (vehicleId) => {
-                window.ParkingLot.removeVehicle(vehicleId[0]);
+                window.ToonParkingLot.removeVehicle(vehicleId[0]);
             });
             
             // Register callbacks to notify Livewire
-            window.ParkingLot.onVehicleParked((data) => {
+            window.ToonParkingLot.onVehicleParked((data) => {
                 @this.dispatch('vehicle-parked', { vehicle: data });
             });
             
-            window.ParkingLot.onVehicleExited((vehicleId) => {
+            window.ToonParkingLot.onVehicleExited((vehicleId) => {
                 @this.dispatch('vehicle-exited', { vehicleId: vehicleId });
             });
             
-            window.ParkingLot.onParkingFull(() => {
+            window.ToonParkingLot.onParkingFull(() => {
                 @this.dispatch('parking-full');
             });
             
@@ -92,11 +92,12 @@ document.addEventListener('alpine:init', () => {
         },
         
         destroy() {
-            if (window.ParkingLot) {
-                window.ParkingLot.destroy();
+            if (window.ToonParkingLot) {
+                window.ToonParkingLot.destroy();
             }
         }
     }));
 });
 </script>
 @endpush
+

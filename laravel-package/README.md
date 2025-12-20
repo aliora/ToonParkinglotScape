@@ -1,4 +1,4 @@
-# Filament Parking Visualization
+# ToonParkingLot
 
 3D Otopark Görselleştirmesi - Laravel Filament Plugin
 
@@ -7,13 +7,13 @@
 ### 1. Composer ile kurulum
 
 ```bash
-composer require polat/filament-parking-visualization
+composer require polat/toon-parking-lot
 ```
 
 ### 2. Asset'leri yayınlama
 
 ```bash
-php artisan vendor:publish --provider="Polat\ParkingVisualization\ParkingVisualizationServiceProvider"
+php artisan vendor:publish --provider="Polat\ToonParkingLot\ToonParkingLotServiceProvider"
 ```
 
 ### 3. JavaScript dosyasını kopyalama
@@ -25,8 +25,8 @@ React uygulamasını derleyip Laravel projesine kopyalayın:
 npm run build:lib
 
 # Oluşan dosyaları Laravel'e kopyala
-cp dist/lib/parking-lot.iife.js /path/to/laravel/public/vendor/parking-visualization/
-cp dist/lib/parking-lot.css /path/to/laravel/public/vendor/parking-visualization/
+cp dist/lib/toon-parking-lot.iife.js /path/to/laravel/public/vendor/toon-parking-lot/
+cp dist/lib/toon-parking-lot.css /path/to/laravel/public/vendor/toon-parking-lot/
 ```
 
 ## Kullanım
@@ -34,7 +34,7 @@ cp dist/lib/parking-lot.css /path/to/laravel/public/vendor/parking-visualization
 ### Temel Kullanım
 
 ```blade
-<livewire:parking-visualization 
+<livewire:toon-parking-lot 
     :capacity="30"
     :vehicles="$parkedVehicles"
 />
@@ -43,7 +43,7 @@ cp dist/lib/parking-lot.css /path/to/laravel/public/vendor/parking-visualization
 ### Tüm Parametreler
 
 ```blade
-<livewire:parking-visualization 
+<livewire:toon-parking-lot 
     :capacity="30"
     :vehicles="$parkedVehicles"
     height="600px"
@@ -166,7 +166,7 @@ Doğrudan JavaScript üzerinden de kontrol edebilirsiniz:
 
 ```javascript
 // Araç ekle
-window.ParkingLot.addVehicle({
+window.ToonParkingLot.addVehicle({
     id: 'abc-123',
     type: 1,
     plate: '34 ABC 123',
@@ -174,19 +174,19 @@ window.ParkingLot.addVehicle({
 });
 
 // Çıkış tetikle
-window.ParkingLot.triggerExit('abc-123');
+window.ToonParkingLot.triggerExit('abc-123');
 
 // Park etmiş araçları al
-const parked = window.ParkingLot.getParkedVehicles();
+const parked = window.ToonParkingLot.getParkedVehicles();
 
 // Boş yer sayısı
-const available = window.ParkingLot.getAvailableSpots();
+const available = window.ToonParkingLot.getAvailableSpots();
 
 // Otopark dolu mu?
-const isFull = window.ParkingLot.isFull();
+const isFull = window.ToonParkingLot.isFull();
 
 // Gece/gündüz değiştir
-window.ParkingLot.setTimeOfDay('Night');
+window.ToonParkingLot.setTimeOfDay('Night');
 ```
 
 ## Filament Widget Örneği
@@ -199,9 +199,9 @@ namespace App\Filament\Widgets;
 use App\Models\Vehicle;
 use Filament\Widgets\Widget;
 
-class ParkingLotWidget extends Widget
+class ToonParkingLotWidget extends Widget
 {
-    protected static string $view = 'filament.widgets.parking-lot';
+    protected static string $view = 'filament.widgets.toon-parking-lot';
 
     public function getParkedVehicles(): array
     {
@@ -219,11 +219,11 @@ class ParkingLotWidget extends Widget
 ```
 
 ```blade
-{{-- resources/views/filament/widgets/parking-lot.blade.php --}}
+{{-- resources/views/filament/widgets/toon-parking-lot.blade.php --}}
 <x-filament::widget>
     <x-filament::card>
-        <livewire:parking-visualization 
-            :capacity="config('parking-visualization.default_capacity')"
+        <livewire:toon-parking-lot 
+            :capacity="config('toon-parking-lot.default_capacity')"
             :vehicles="$this->getParkedVehicles()"
             height="400px"
         />
@@ -233,7 +233,7 @@ class ParkingLotWidget extends Widget
 
 ## Konfigürasyon
 
-`config/parking-visualization.php`:
+`config/toon-parking-lot.php`:
 
 ```php
 return [
