@@ -1,6 +1,5 @@
 import React, { Suspense } from 'react';
 import { Plane } from '@react-three/drei';
-import { useControls } from 'leva';
 import { AssetInstance } from './AssetInstance';
 import { useParkingLayout } from '../hooks/useParkingLayout';
 import { DIMENSIONS, ASSETS, COLORS } from '../config/constants';
@@ -10,6 +9,7 @@ import { LowPolyClouds } from './environment/LowPolyClouds';
 import { ConnectionRoad } from './environment/ConnectionRoad';
 import { InteriorLights } from './environment/InteriorLights';
 import { NatureScatter } from './environment/NatureScatter';
+import { useTrafficStore } from '../stores/useTrafficStore';
 
 
 interface EnvironmentWrapperProps {
@@ -17,11 +17,8 @@ interface EnvironmentWrapperProps {
 }
 
 export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity = 20 }) => {
-    // Read timeOfDay same as App.tsx to determine cloud color
-    // We use a separate useControls call but it syncs with the one in App.tsx by key
-    const { timeOfDay } = useControls('Environment', {
-        timeOfDay: { options: ['Day', 'Night'], value: 'Day' },
-    });
+    // Read timeOfDay from store to determine cloud color
+    const timeOfDay = useTrafficStore(state => state.worldConfig.timeOfDay);
     const isNight = timeOfDay === 'Night';
     const cloudColor = '#ffffff';
     const {

@@ -60,9 +60,27 @@ export interface VehicleInstance extends IVehicleData {
     isPendingExit?: boolean; // Waiting in spot for exit queue space
 }
 
-interface TrafficState {
+// --- WORLD CONFIG ---
+export interface WorldConfig {
+    timeOfDay: 'Day' | 'Night';
+    capacity: number;
+    nature: {
+        numClusters: number;
+        baseClusterRadius: number;
+        scatterCount: number;
+        greeneryChance: number;
+        sparseGreeneryChance: number;
+    };
+}
+
+export interface TrafficState {
     parkingSpots: ParkingSpot[];
     vehicles: VehicleInstance[];
+
+    // World Config
+    worldConfig: WorldConfig;
+    setWorldConfig: (config: Partial<WorldConfig> | ((prev: WorldConfig) => Partial<WorldConfig>)) => void;
+    setNatureConfig: (config: Partial<WorldConfig['nature']>) => void;
 
     // Virtual Queue & Gate State
     virtualEntryBacklog: VirtualVehicleRequest[];
@@ -144,6 +162,30 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     parkingSpots: [],
     vehicles: [],
     spawnPoint: SPAWN_POINT,
+
+    worldConfig: {
+        timeOfDay: 'Day',
+        capacity: 20,
+        nature: {
+            numClusters: 12,
+            baseClusterRadius: 15,
+            scatterCount: 200,
+            greeneryChance: 0.6,
+            sparseGreeneryChance: 0.15
+        }
+    },
+
+    setWorldConfig: (config) => set((state) => {
+        const newConfig = typeof config === 'function' ? config(state.worldConfig) : config;
+        return { worldConfig: { ...state.worldConfig, ...newConfig } };
+    }),
+
+    setNatureConfig: (config) => set((state) => ({
+        worldConfig: {
+            ...state.worldConfig,
+            nature: { ...state.worldConfig.nature, ...config }
+        }
+    })),
     blockHeight: 0,
     pairHeight: 0,
     numPairs: 0,

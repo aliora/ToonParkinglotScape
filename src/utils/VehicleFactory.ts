@@ -27,10 +27,7 @@ export function getImageByType(type: VehicleType): string {
         [VehicleType.CAR]: '/assets/ui/car.png',
         [VehicleType.MINIBUS]: '/assets/ui/minibus.png',
         [VehicleType.BUS]: '/assets/ui/bus.png',
-        [VehicleType.PICKUP]: '/assets/ui/pickup.png',
         [VehicleType.TRUCK]: '/assets/ui/truck.png',
-        [VehicleType.HEAVYTRUCK]: '/assets/ui/heavytruck.png',
-        [VehicleType.MOTORCYCLE]: '/assets/ui/motorcycle.png',
     };
     return imageMap[type];
 }

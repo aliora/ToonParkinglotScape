@@ -2,12 +2,12 @@
 
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sky, Environment, GizmoHelper, GizmoViewport, useEnvironment } from '@react-three/drei';
-import { Leva, useControls } from 'leva';
 import { ParkingLot } from './components/ParkingLot';
 import { EnvironmentWrapper } from './components/EnvironmentWrapper';
 import { VehicleManager } from './components/vehicles/VehicleManager';
 import { ControlPanel } from './components/ui/ControlPanel';
-import { memo, useMemo, useEffect } from 'react';
+import { memo, useMemo } from 'react';
+import { useTrafficStore } from './stores/useTrafficStore';
 
 import './App.css';
 
@@ -24,14 +24,9 @@ const MemoizedParkingLot = memo(ParkingLot);
 const MemoizedVehicleManager = memo(VehicleManager);
 
 function Scene() {
-  // Environment Controls
-  const { timeOfDay } = useControls('Environment', {
-    timeOfDay: { options: ['Day', 'Night'], value: 'Day' },
-  });
-
-  const config = useControls('Parking Lot', {
-    capacity: { value: 20, min: 1, max: 200, step: 1, label: 'Total Capacity' },
-  });
+  // Environment Controls from Store
+  const worldConfig = useTrafficStore(state => state.worldConfig);
+  const { timeOfDay, capacity } = worldConfig;
 
   const isNight = timeOfDay === 'Night';
 
@@ -78,9 +73,9 @@ function Scene() {
       />
 
       {/* Memoized components - won't re-render on timeOfDay change */}
-      <MemoizedParkingLot capacity={config.capacity} />
-      <EnvironmentWrapper capacity={config.capacity} />
-      <MemoizedVehicleManager capacity={config.capacity} />
+      <MemoizedParkingLot capacity={capacity} />
+      <EnvironmentWrapper capacity={capacity} />
+      <MemoizedVehicleManager capacity={capacity} />
 
       <OrbitControls target={[10, 0, 0]} />
 
@@ -106,7 +101,6 @@ function Scene() {
 function App() {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
-      <Leva collapsed={false} />
       <ControlPanel />
       <Canvas shadows camera={{ position: [-10, 30, 40], fov: 50 }}>
         <EnvironmentPreloader />

@@ -16,30 +16,25 @@ import { VehicleType } from '../types/VehicleTypes';
 
 export const VEHICLE_MODELS: Record<VehicleType, { model: string; scale: number; rotation?: [number, number, number]; texture?: string; yOffset?: number }[]> = {
     [VehicleType.CAR]: [
-        { model: 'Car_1_2.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Car_1_3.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Car_3_1.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Taxi.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+        { model: 'Hatchback.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Muscle.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Muscle_2.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Roadster.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'SUV.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Sedan.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Sports.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
+        { model: 'Taxi.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
     ],
     [VehicleType.MINIBUS]: [
-        { model: 'Bus_3.fbx', scale: 0.015, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+        { model: 'Van.fbx', scale: 0.11, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 },
+        { model: 'Pickup.fbx', scale: 0.11, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
     ],
     [VehicleType.BUS]: [
-        { model: 'Bus_3.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
-    ],
-    [VehicleType.PICKUP]: [
-        { model: 'Pickup_3.fbx', scale: 0.016, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+        { model: 'Bus.fbx', scale: 0.13, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
     ],
     [VehicleType.TRUCK]: [
-        { model: 'Truck_3.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 },
-        { model: 'Ambulance.fbx', scale: 0.018, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
-    ],
-    [VehicleType.HEAVYTRUCK]: [
-        { model: 'Fire_Truck.fbx', scale: 0.02, rotation: [0, 90, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
-    ],
-    [VehicleType.MOTORCYCLE]: [
-        { model: 'Motorcycle.fbx', scale: 0.012, rotation: [0, 90, 0], texture: '/Texture/tex.png', yOffset: 0 }
-    ],
+        { model: 'Truck.fbx', scale: 0.13, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+    ]
 };
 
 export const COLORS = {

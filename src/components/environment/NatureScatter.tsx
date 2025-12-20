@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { AssetInstance } from '../AssetInstance';
 import { ASSETS, DIMENSIONS, PATHS } from '../../config/constants';
-import { useControls } from 'leva';
+import { useTrafficStore } from '../../stores/useTrafficStore';
 
 interface Props {
     boundMinX: number;
@@ -26,13 +26,7 @@ export const NatureScatter: React.FC<Props> = ({ boundMinX, boundMaxX, boundMinZ
         scatterCount,
         greeneryChance,
         sparseGreeneryChance
-    } = useControls('Nature Spawning', {
-        numClusters: { value: 12, min: 1, max: 30, step: 1 },
-        baseClusterRadius: { value: 15, min: 5, max: 40, step: 1 },
-        scatterCount: { value: 200, min: 50, max: 1000, step: 10 },
-        greeneryChance: { value: 0.6, min: 0, max: 1, step: 0.1, label: 'Cluster Type Ratio (Green/Dead)' },
-        sparseGreeneryChance: { value: 0.15, min: 0, max: 1, step: 0.05, label: 'Sparse Greenery Outside' }
-    });
+    } = useTrafficStore(state => state.worldConfig.nature);
 
     return useMemo(() => {
         const els: React.ReactNode[] = [];
