@@ -20,7 +20,7 @@ import { TRAFFIC_CONFIG } from '../config/constants';
 // Gate X position is around -14. (Should ideally come from config, but keeping it local for now if matches config)
 // Or use TRAFFIC_CONFIG.BARRIER_X if available
 const GATE_X_POS = TRAFFIC_CONFIG.BARRIER_X;
-const GATE_STOP_DISTANCE = 6; // Stop this far before
+const GATE_STOP_DISTANCE = 7.5; // Stop this far before
 
 // Lane Configuration (Swapped)
 const ENTRY_LANE_Z = -TRAFFIC_CONFIG.LANE_OFFSET;
@@ -79,120 +79,162 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
 
     const vehicles = useTrafficStore((s) => s.vehicles);
 
+    const gateWaitTimer = useRef(0);
+    const collisionWaitTimer = useRef(0);
+
     useFrame((_, delta) => {
         if (!meshRef.current) return;
         const mesh = meshRef.current;
-        const currentX = mesh.position.x;
-        const currentZ = mesh.position.z;
+        const currentPos = mesh.position;
 
-        // --- COLLISION AVOIDANCE (Natural Queue) ---
-        // Determine current lane Z based on direction
-        const myLaneZ = data.isExiting ? EXIT_LANE_Z : ENTRY_LANE_Z;
-        const onMainLane = Math.abs(currentZ - myLaneZ) < 1.5;
+        // ---------------------------------------------------------
+        // 1. COLLISION CHECK (Physical Queueing)
+        // ---------------------------------------------------------
+
         let blockedByCar = false;
 
+        const isEntry = !data.isExiting;
+        const myLaneZ = isEntry ? ENTRY_LANE_Z : EXIT_LANE_Z;
+
+        const onMainLane = Math.abs(currentPos.z - myLaneZ) < 1.0;
+
         if (onMainLane) {
-            // Find closest car ahead
             let closestDist = 999;
 
             vehicles.forEach(other => {
                 if (other.id === data.id) return;
-                // Only avoid vehicles moving in the SAME direction.
                 if (other.isExiting !== data.isExiting) return;
+                if (other.state === 'parked') return;
 
-                // Simple state check: only care about moving cars or waiting cars
-                if (other.state === 'parked' && !other.isExiting) return;
+                const otherPos = other.currentPosition;
 
-                const otherX = other.currentPosition.x;
-                const otherZ = other.currentPosition.z;
+                if (Math.abs(otherPos.z - myLaneZ) > 1.5) return;
 
-                // Check if other car is on SAME lane
-                if (Math.abs(otherZ - myLaneZ) < 1.5) {
-                    // Check Directionality
-                    if (!data.isExiting) {
-                        // Entry: Moving +X (-50 -> -5). Car Ahead is X > My X.
-                        if (otherX > currentX && otherX < currentX + 8) {
-                            const dist = otherX - currentX;
-                            if (dist < closestDist) closestDist = dist;
-                        }
-                    } else {
-                        // Exit: Moving -X (-5 -> -50). Car Ahead is X < My X.
-                        if (otherX < currentX && otherX > currentX - 8) {
-                            const dist = currentX - otherX;
-                            if (dist < closestDist) closestDist = dist;
-                        }
+                if (isEntry) {
+                    if (otherPos.x > currentPos.x && otherPos.x < currentPos.x + 8) {
+                        const d = otherPos.x - currentPos.x;
+                        if (d < closestDist) closestDist = d;
+                    }
+                } else {
+                    if (otherPos.x < currentPos.x && otherPos.x > currentPos.x - 8) {
+                        const d = currentPos.x - otherPos.x;
+                        if (d < closestDist) closestDist = d;
                     }
                 }
             });
 
-            if (closestDist < 6.0) { // Stop Distance
+            if (closestDist < 5.5) {
                 blockedByCar = true;
             }
         }
 
         if (blockedByCar) {
-            return; // Wait for car ahead to move
+            collisionWaitTimer.current += delta;
+            if (collisionWaitTimer.current > 25.0) {
+                console.warn(`[Vehicle ${data.id}] Blocked > 25s. FORCING MOVE (Ignoring Collision)`);
+                collisionWaitTimer.current = 0;
+                // Proceed even if blocked to clear jam
+            } else {
+                return; // Stop moving
+            }
+        } else {
+            collisionWaitTimer.current = 0;
         }
 
-        // --- GATE CHECK LOGIC ---
-        let approachingGate = false;
-        let distToGate = 999;
+        // ---------------------------------------------------------
+        // 2. GATE LOGIC
+        // ---------------------------------------------------------
 
-        // Entry moves Left -> Right (X increases). Gate at -14. Before is < -14.
-        if (!data.isExiting && !hasPassedGate) {
-            if (currentX < GATE_X_POS) {
-                distToGate = GATE_X_POS - currentX;
-                if (distToGate < GATE_STOP_DISTANCE && distToGate > 0) {
-                    approachingGate = true;
+        if (!hasPassedGate) {
+            let approaching = false;
+            let distToGate = 999;
+
+            if (isEntry) {
+                if (currentPos.x < GATE_X_POS) {
+                    distToGate = GATE_X_POS - currentPos.x;
+                    if (distToGate < GATE_STOP_DISTANCE) approaching = true;
+                } else {
+                    if (!hasPassedGate) {
+                        setHasPassedGate(true);
+                        notifyEntryPassageComplete(data.id);
+                    }
                 }
             } else {
-                if (!hasPassedGate) {
-                    setHasPassedGate(true);
-                    notifyEntryPassageComplete(data.id);
+                if (currentPos.x > GATE_X_POS) {
+                    distToGate = currentPos.x - GATE_X_POS;
+                    if (distToGate < GATE_STOP_DISTANCE) approaching = true;
+                } else {
+                    if (!hasPassedGate) {
+                        setHasPassedGate(true);
+                        notifyExitPassageComplete(data.id);
+                    }
                 }
+            }
+
+            if (approaching) {
+                let canProceed = false;
+
+                if (isEntry) {
+                    const myTurn = currentEntryGateVehicleId === data.id;
+                    if (!myTurn) {
+                        const granted = requestEntryGateAccess(data.id);
+                        if (!granted) {
+                            gateWaitTimer.current += delta;
+                            if (gateWaitTimer.current > 25.0) {
+                                console.warn(`[Vehicle ${data.id}] Stuck requesting ENTRY > 25s. Retrying...`);
+                                requestEntryGateAccess(data.id);
+                                gateWaitTimer.current = 0;
+                            }
+                            return;
+                        }
+                    }
+                    if (entryGateState === GateState.OPEN) canProceed = true;
+                    else {
+                        gateWaitTimer.current += delta;
+                        if (gateWaitTimer.current > 25.0) {
+                            console.warn(`[Vehicle ${data.id}] Waiting for ENTRY OPEN > 25s. Retrying...`);
+                            requestEntryGateAccess(data.id);
+                            gateWaitTimer.current = 0;
+                        }
+                        if (!canProceed) return;
+                    }
+
+                } else {
+                    const myTurn = currentExitGateVehicleId === data.id;
+                    if (!myTurn) {
+                        const granted = requestExitGateAccess(data.id);
+                        if (!granted) {
+                            gateWaitTimer.current += delta;
+                            if (gateWaitTimer.current > 25.0) {
+                                console.warn(`[Vehicle ${data.id}] Stuck requesting EXIT > 25s. Retrying...`);
+                                requestExitGateAccess(data.id);
+                                gateWaitTimer.current = 0;
+                            }
+                            return;
+                        }
+                    }
+                    if (exitGateState === GateState.OPEN) canProceed = true;
+                    else {
+                        gateWaitTimer.current += delta;
+                        if (gateWaitTimer.current > 25.0) {
+                            console.warn(`[Vehicle ${data.id}] Waiting for EXIT OPEN > 25s. Retrying...`);
+                            requestExitGateAccess(data.id);
+                            gateWaitTimer.current = 0;
+                        }
+                        if (!canProceed) return;
+                    }
+                }
+
+                gateWaitTimer.current = 0; // Proceeding
+            } else {
+                gateWaitTimer.current = 0;
             }
         }
 
-        // Exit moves Right -> Left (X decreases). Gate at -14. Before is > -14.
-        if (data.isExiting && !hasPassedGate) {
-            if (currentX > GATE_X_POS) {
-                distToGate = currentX - GATE_X_POS;
-                if (distToGate < GATE_STOP_DISTANCE && distToGate > 0) {
-                    approachingGate = true;
-                }
-            } else {
-                if (!hasPassedGate) {
-                    setHasPassedGate(true);
-                    notifyExitPassageComplete(data.id);
-                }
-            }
-        }
+        // ---------------------------------------------------------
+        // 3. MOVEMENT EXECUTION
+        // ---------------------------------------------------------
 
-        // If Approaching Gate, Handle Access
-        if (approachingGate) {
-            if (!data.isExiting) {
-                // --- ENTRY GATE LOGIC ---
-                const myTurn = currentEntryGateVehicleId === data.id;
-                if (!myTurn) {
-                    const granted = requestEntryGateAccess(data.id);
-                    if (!granted) return; // STOP
-                }
-                if (entryGateState !== GateState.OPEN) return; // STOP
-
-            } else {
-                // --- EXIT GATE LOGIC ---
-                const myTurn = currentExitGateVehicleId === data.id;
-                if (!myTurn) {
-                    const granted = requestExitGateAccess(data.id);
-                    if (!granted) return; // STOP
-                }
-                if (exitGateState !== GateState.OPEN) return; // STOP
-            }
-
-            // Proceed!
-        }
-
-        // ==================== EXITING ====================
         if (data.isExiting && !hasExited) {
             const exitPath = data.exitWaypoints;
             if (exitWaypointIndex < exitPath.length) {
@@ -212,7 +254,6 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
             return;
         }
 
-        // ==================== ENTERING ====================
         if (hasParked) return;
 
         const entryPath = data.waypoints;
@@ -221,11 +262,9 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         const isLastWaypoint = currentIndex >= entryPath.length - 1;
 
         if (currentIndex < entryPath.length) {
-            // Smooth Parking Loigc
             if (isLastWaypoint) {
-                const currentPos = new Vector3(mesh.position.x, 0, mesh.position.z);
                 const targetPos = new Vector3(target.x, 0, target.z);
-                const distToTarget = currentPos.distanceTo(targetPos);
+                const distToTarget = new Vector3(mesh.position.x, 0, mesh.position.z).distanceTo(targetPos);
 
                 if (distToTarget < PARKING_APPROACH_DISTANCE) {
                     mesh.position.lerp(new Vector3(target.x, vehicleHeight / 2, target.z), delta * PARKING_LERP_SPEED);
@@ -250,7 +289,6 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                 }
             }
 
-            // Standard Logic
             const arrived = moveTowardsTarget(mesh, target, delta, vehicleHeight);
             if (arrived) {
                 if (isLastWaypoint) {
@@ -266,7 +304,6 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
             }
             updatePosition();
         } else {
-            // Safety fallback
             if (!hasParked && data.state !== 'parked') {
                 console.warn(`[Vehicle ${data.id}] Waypoint index out of bounds, forcing park`);
                 mesh.position.copy(data.targetPosition);

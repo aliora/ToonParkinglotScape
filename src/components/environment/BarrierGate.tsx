@@ -51,7 +51,7 @@ export function BarrierGate({ position = [-14, 0, -5], type }: BarrierGateProps)
                 }
             } else if (gateState === GateState.CLOSING) {
                 // Check if closed (rotation near 0)
-                if (Math.abs(armRef.current.rotation.x) < 0.1) {
+                if (Math.abs(armRef.current.rotation.x) < 0.15) {
                     notifyClosed();
                 }
             }

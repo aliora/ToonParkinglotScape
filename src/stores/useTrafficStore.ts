@@ -6,8 +6,8 @@ import { createRandomVehicle } from '../utils/VehicleFactory';
 import { DIMENSIONS, TRAFFIC_CONFIG } from '../config/constants';
 
 // --- CONFIGURATION CONSTANTS ---
-const MAX_VISIBLE_ENTRY_QUEUE = 3;
-const MAX_VISIBLE_EXIT_QUEUE = 3;
+const MAX_VISIBLE_ENTRY_QUEUE = 10;
+const MAX_VISIBLE_EXIT_QUEUE = 10;
 
 // Lane Configuration
 // Entry Lane: Top lane - LHT (swapped)
@@ -419,11 +419,8 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     },
 
     notifyEntryPassageComplete: (vehicleId: string) => {
-        const state = get();
-        if (state.currentEntryGateVehicleId === vehicleId) {
-            console.log(`[Entry Gate] Passage complete for ${vehicleId}, closing gate.`);
-            set({ entryGateState: GateState.CLOSING });
-        }
+        console.log(`[Entry Gate] Passage complete for ${vehicleId}, closing gate.`);
+        set({ entryGateState: GateState.CLOSING });
     },
 
     notifyEntryGateClosed: () => {
@@ -457,11 +454,8 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
     },
 
     notifyExitPassageComplete: (vehicleId: string) => {
-        const state = get();
-        if (state.currentExitGateVehicleId === vehicleId) {
-            console.log(`[Exit Gate] Passage complete for ${vehicleId}, closing gate.`);
-            set({ exitGateState: GateState.CLOSING });
-        }
+        console.log(`[Exit Gate] Passage complete for ${vehicleId}, closing gate.`);
+        set({ exitGateState: GateState.CLOSING });
     },
 
     notifyExitGateClosed: () => {

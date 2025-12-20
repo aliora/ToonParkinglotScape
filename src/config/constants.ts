@@ -172,11 +172,9 @@ export const ASSETS = {
 };
 export const TRAFFIC_CONFIG = {
     ROAD_WIDTH: 22,           // Total width of the two-lane road
-    LANE_OFFSET: 2,          // Distance from center (Z=0) to lane center (+/-)
+    LANE_OFFSET: 4.8,          // Distance from center (Z=0) to lane center (+/-)
     BARRIER_X: -13.6,          // X position of the barriers
     BARRIER_Z_BASE: 8,       // Distance from center (Z=0) to barrier base position (+/-)
     BARRIER_ARM_LENGTH: 6.4, // Length of the barrier arm
     SPAWN_X: -60,            // X position for spawning vehicles
 };
-
-
