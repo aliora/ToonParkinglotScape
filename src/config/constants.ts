@@ -14,26 +14,26 @@ export const DIMENSIONS = {
 
 import { VehicleType } from '../types/VehicleTypes';
 
-export const VEHICLE_MODELS: Record<VehicleType, { model: string; scale: number; rotation?: [number, number, number]; texture?: string; yOffset?: number }[]> = {
+export const VEHICLE_MODELS: Record<VehicleType, { model: string; scale: number; rotation?: [number, number, number]; yOffset?: number }[]> = {
     [VehicleType.CAR]: [
-        { model: 'Hatchback.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Muscle.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Muscle_2.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Roadster.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'SUV.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Sedan.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Sports.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 },
-        { model: 'Taxi.fbx', scale: 0.1, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+        { model: 'Hatchback.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Muscle.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Muscle_2.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Roadster.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'SUV.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Sedan.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Sports.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Taxi.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 }
     ],
     [VehicleType.MINIBUS]: [
-        { model: 'Van.fbx', scale: 0.11, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 },
-        { model: 'Pickup.fbx', scale: 0.11, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: 0 }
+        { model: 'Van.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
+        { model: 'Pickup.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 }
     ],
     [VehicleType.BUS]: [
-        { model: 'Bus.fbx', scale: 0.13, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+        { model: 'Bus.fbx', scale: 0.5, rotation: [0, 0, 0], yOffset: 0 }
     ],
     [VehicleType.TRUCK]: [
-        { model: 'Truck.fbx', scale: 0.13, rotation: [0, 180, 0], texture: '/Texture/TXT_LowPolyEssentials.png', yOffset: -0.4 }
+        { model: 'Truck.fbx', scale: 0.5, rotation: [0, 0, 0], yOffset: 0 }
     ]
 };
 

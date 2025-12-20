@@ -32,12 +32,7 @@ export function getImageByType(type: VehicleType): string {
     return imageMap[type];
 }
 
-/**
- * Generates a random hex color
- */
-function generateRandomColor(): string {
-    return `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`;
-}
+
 
 /**
  * Returns a random VehicleType
@@ -64,12 +59,10 @@ export function createRandomVehicle(type?: VehicleType): IVehicleData {
         type: vehicleType,
         plate: generatePlate(),
         image: getImageByType(vehicleType),
-        color: generateRandomColor(),
         state: 'moving',
         modelUrl: modelConfig.model,
         modelScale: modelConfig.scale,
         modelRotation: modelConfig.rotation,
-        modelTexture: modelConfig.texture,
         modelYOffset: modelConfig.yOffset,
     };
 }

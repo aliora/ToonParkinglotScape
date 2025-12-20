@@ -17,10 +17,7 @@ export function VehicleController({ data }: VehicleControllerProps) {
             case 1: return [2, 1, 4];
             case 2: return [2.2, 1.5, 5];
             case 3: return [2.5, 2, 8];
-            case 4: return [2, 1.2, 4.5];
             case 5: return [2.5, 1.8, 6];
-            case 6: return [3, 2.5, 10];
-            case 7: return [0.8, 1, 2];
             default: return [2, 1, 4];
         }
     }, [data.type]);
@@ -37,7 +34,7 @@ export function VehicleController({ data }: VehicleControllerProps) {
     return (
         <VehicleView
             ref={meshRef}
-            dimensions={dimensions}
+
             vehicleHeight={vehicleHeight}
             color={data.color}
             position={{ x: data.currentPosition.x, z: data.currentPosition.z }}

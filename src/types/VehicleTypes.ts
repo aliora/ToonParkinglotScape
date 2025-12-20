@@ -16,7 +16,7 @@ export interface IVehicleData {
     type: VehicleType;
     plate: string;
     image: string;
-    color: string;
+    color?: string;
     state: 'moving' | 'parked';
     modelUrl: string;
     modelScale: number;

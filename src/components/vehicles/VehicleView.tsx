@@ -4,9 +4,9 @@ import { AssetInstance } from '../AssetInstance';
 import { PATHS } from '../../config/constants';
 
 interface VehicleViewProps {
-    dimensions: [number, number, number];
+
     vehicleHeight: number;
-    color: string;
+    color?: string;
     position: { x: number; z: number };
     modelUrl: string;
     modelScale: number;
@@ -16,7 +16,7 @@ interface VehicleViewProps {
 }
 
 export const VehicleView = forwardRef<Group, VehicleViewProps>(
-    ({ dimensions, vehicleHeight, color, position, modelUrl, modelScale, modelRotation, modelTexture, modelYOffset }, ref) => {
+    ({ vehicleHeight, color, position, modelUrl, modelScale, modelRotation, modelTexture, modelYOffset }, ref) => {
         // Convert degrees to radians for default rotation
         const defaultRotation: [number, number, number] = modelRotation
             ? [modelRotation[0] * Math.PI / 180, modelRotation[1] * Math.PI / 180, modelRotation[2] * Math.PI / 180]
