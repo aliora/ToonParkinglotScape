@@ -184,25 +184,4 @@ export const TRAFFIC_CONFIG = {
     SPAWN_X: -60,            // X position for spawning vehicles
 };
 
-export const WIND_CONFIG = {
-    enabled: true,
-    spawnChance: 0.5,      // Probability of scanning for a target per frame
-    speed: 0.6,            // Animation speed multiplier
-    line: {
-        width: 5,          // Line width in pixels
-        length: 25,        // Length of the path
-        color: '#FFFFFFFF',
-        startHeight: 15,    // Height offset from tree base
-        heightVariation: 5, // Random Y variation range
-    },
-    curve: {
-        midPointY: 1.2,      // How high the curve arcs up in the middle relative to linear path
-        midPointX: 1,      // How much the curve bends sideways
-        endYDrop: 1.2,       // How much the end point drops relative to start height
-    },
-    opacity: {
-        max: 0.6,          // Maximum opacity
-        fadeIn: 0.2,       // Progress (0-1) to reach max opacity
-        fadeOut: 0.7       // Progress (0-1) to start fading out
-    }
-};
+

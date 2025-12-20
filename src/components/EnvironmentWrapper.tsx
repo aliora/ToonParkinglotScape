@@ -10,7 +10,7 @@ import { LowPolyClouds } from './environment/LowPolyClouds';
 import { ConnectionRoad } from './environment/ConnectionRoad';
 import { InteriorLights } from './environment/InteriorLights';
 import { NatureScatter } from './environment/NatureScatter';
-import { WindEffect } from './environment/WindEffect';
+
 
 interface EnvironmentWrapperProps {
     capacity?: number;
@@ -83,13 +83,6 @@ export const EnvironmentWrapper: React.FC<EnvironmentWrapperProps> = ({ capacity
                 />
 
                 <NatureScatter
-                    boundMinX={boundMinX}
-                    boundMaxX={boundMaxX}
-                    boundMinZ={boundMinZ}
-                    boundMaxZ={boundMaxZ}
-                />
-
-                <WindEffect
                     boundMinX={boundMinX}
                     boundMaxX={boundMaxX}
                     boundMinZ={boundMinZ}
