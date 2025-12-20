@@ -1,73 +1,201 @@
-# React + TypeScript + Vite
+# zone-parking-3d
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+3D Parking Visualization package for Zone using React Three.js.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🚗 Real-time 3D visualization of parking lot
+- 📸 Vehicle photos displayed on hover (from `photo_vehicle`)
+- 🔄 Cold start: loads existing vehicles on page load
+- 📡 Real-time updates via Laravel Reverb/Echo
+- 📐 Dynamic parking lot size based on capacity
 
-## React Compiler
+## Installation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Add the Package to Zone
 
-## Expanding the ESLint configuration
+Add to `composer.json` in the Zone project:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
+```json
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../zone-parking-3d"
+        }
     ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+    "require": {
+        "zone/parking-3d": "*"
+    }
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then run:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+composer update zone/parking-3d
 ```
+
+### 2. Install NPM Dependencies
+
+Add these to Zone's `package.json`:
+
+```json
+{
+    "dependencies": {
+        "@react-three/drei": "^10.7.7",
+        "@react-three/fiber": "^9.4.2",
+        "react": "^19.2.0",
+        "react-dom": "^19.2.0",
+        "three": "^0.181.2",
+        "zustand": "^5.0.9"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.7.0",
+        "@types/react": "^19.2.5",
+        "@types/react-dom": "^19.2.3",
+        "@types/three": "^0.181.0"
+    }
+}
+```
+
+Then run:
+
+```bash
+npm install
+```
+
+### 3. Configure Vite
+
+Update `vite.config.js` in Zone:
+
+```javascript
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                // Add the parking visualization entry point
+                '../zone-parking-3d/resources/js/parking-visualization/main.tsx',
+            ],
+            refresh: true,
+        }),
+        tailwindcss(),
+        react(),
+    ],
+    resolve: {
+        alias: {
+            // Alias for the package
+            '@parking-3d': '../zone-parking-3d/resources/js/parking-visualization',
+        },
+    },
+});
+```
+
+### 4. Configure Tailwind
+
+Add to `tailwind.config.js` (or CSS file for Tailwind v4):
+
+```javascript
+// For Tailwind v3
+module.exports = {
+    content: [
+        // ... existing paths
+        '../zone-parking-3d/resources/views/**/*.blade.php',
+        '../zone-parking-3d/resources/js/**/*.{js,ts,jsx,tsx}',
+    ],
+};
+```
+
+For Tailwind v4, add to your CSS file:
+
+```css
+@source "../zone-parking-3d/resources/views/**/*.blade.php";
+@source "../zone-parking-3d/resources/js/**/*.{js,ts,jsx,tsx}";
+```
+
+### 5. Register Filament Page
+
+In your Filament Panel provider, register the page:
+
+```php
+use Zone\Parking3D\Filament\Pages\ParkingVisualization;
+
+public function panel(Panel $panel): Panel
+{
+    return $panel
+        // ...
+        ->pages([
+            ParkingVisualization::class,
+        ]);
+}
+```
+
+### 6. Dispatch Events (Optional)
+
+To enable real-time updates, dispatch events from your `ParkSessionObserver` or service:
+
+```php
+use Zone\Parking3D\Events\VehicleEntered;
+use Zone\Parking3D\Events\VehicleExited;
+
+// When a vehicle enters
+VehicleEntered::dispatch(
+    $session->park_id,
+    $session->session_uid,
+    $session->plate_txt,
+    $session->entryRecord?->photo_vehicle,
+    $session->vehicle_class_id?->value ?? 1
+);
+
+// When a vehicle exits
+VehicleExited::dispatch(
+    $session->park_id,
+    $session->session_uid
+);
+```
+
+## Build & Run
+
+```bash
+# Development
+npm run dev
+
+# Production
+npm run build
+```
+
+## File Structure
+
+```
+zone-parking-3d/
+├── composer.json
+├── src/
+│   ├── Parking3DServiceProvider.php
+│   ├── Filament/Pages/ParkingVisualization.php
+│   └── Events/
+│       ├── VehicleEntered.php
+│       └── VehicleExited.php
+└── resources/
+    ├── views/pages/parking-visualization.blade.php
+    └── js/parking-visualization/
+        ├── main.tsx
+        ├── App.tsx
+        ├── types.ts
+        ├── stores/useTrafficStore.ts
+        ├── hooks/useRealtimeSync.ts
+        └── components/
+            ├── ParkingLot.tsx
+            ├── Vehicle.tsx
+            └── VehicleManager.tsx
+```
+
+## License
+
+MIT
