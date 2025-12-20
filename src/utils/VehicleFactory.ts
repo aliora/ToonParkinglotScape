@@ -64,6 +64,7 @@ export function createRandomVehicle(type?: VehicleType): IVehicleData {
         modelScale: modelConfig.scale,
         modelRotation: modelConfig.rotation,
         modelYOffset: modelConfig.yOffset,
+        entryTime: Date.now(), // Giriş zamanı
     };
 }
 

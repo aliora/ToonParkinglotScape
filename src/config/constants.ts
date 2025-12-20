@@ -32,6 +32,7 @@ export const VEHICLE_MOVEMENT = Object.freeze({
     ARRIVAL_THRESHOLD: 0.1,
     PARKING_APPROACH_DISTANCE: 3.0,
     PARKING_LERP_SPEED: 3.0,
+    OUTLINE_THICKNESS: 1.05, // Hover outline scale multiplier (1.04 = %4 bigger)
 } as const);
 
 /**

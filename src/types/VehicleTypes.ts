@@ -23,4 +23,5 @@ export interface IVehicleData {
     modelRotation?: [number, number, number] | readonly [number, number, number];
     modelTexture?: string;
     modelYOffset?: number;
+    entryTime: number; // Unix timestamp - araç giriş zamanı
 }

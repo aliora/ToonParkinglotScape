@@ -6,6 +6,7 @@ import { ParkingLot } from './components/ParkingLot';
 import { EnvironmentWrapper } from './components/EnvironmentWrapper';
 import { VehicleManager } from './components/vehicles/VehicleManager';
 import { ControlPanel } from './components/ui/ControlPanel';
+import { VehicleHoverProvider, VehicleHoverPopup } from './components/vehicles/VehicleHoverPopup';
 import { memo, useMemo } from 'react';
 import { useTrafficStore } from './stores/useTrafficStore';
 
@@ -100,15 +101,17 @@ function Scene() {
 
 function App() {
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <ControlPanel />
-      <Canvas shadows camera={{ position: [-10, 30, 40], fov: 50 }}>
-        <EnvironmentPreloader />
-        <Scene />
-      </Canvas>
-    </div>
+    <VehicleHoverProvider>
+      <div style={{ width: '100vw', height: '100vh' }}>
+        <ControlPanel />
+        <VehicleHoverPopup />
+        <Canvas shadows camera={{ position: [-10, 30, 40], fov: 50 }}>
+          <EnvironmentPreloader />
+          <Scene />
+        </Canvas>
+      </div>
+    </VehicleHoverProvider>
   );
 }
 
 export default App;
-
