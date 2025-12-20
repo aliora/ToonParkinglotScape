@@ -4,54 +4,15 @@ import { Box } from '@react-three/drei';
 import { Mesh, Vector3 } from 'three';
 import type { VehicleInstance } from '../../stores/useTrafficStore';
 import { useTrafficStore } from '../../stores/useTrafficStore';
+import { VEHICLE_DIMENSIONS } from '../../config/constants';
+import {
+    moveTowardsTarget,
+    PARKING_APPROACH_DISTANCE,
+    PARKING_LERP_SPEED
+} from '../../utils/vehicleMovementUtils';
 
 interface VehicleBoxProps {
     data: VehicleInstance;
-}
-
-// Constants
-// Constants
-const MOVE_SPEED = 10;
-const ROTATION_SPEED = 4;
-const ARRIVAL_THRESHOLD = 0.1; // Decreased for better precision
-const PARKING_APPROACH_DISTANCE = 3.0; // Distance to start easing out
-const PARKING_LERP_SPEED = 3.0; // Speed of the ease out
-
-// Helper: Move mesh towards target, returns true if arrived
-function moveTowardsTarget(
-    mesh: Mesh,
-    target: Vector3,
-    delta: number,
-    vehicleHeight: number
-): boolean {
-    const currentPos = new Vector3(mesh.position.x, 0, mesh.position.z);
-    const targetPos = new Vector3(target.x, 0, target.z);
-    const direction = new Vector3().subVectors(targetPos, currentPos);
-    const distance = direction.length();
-
-    if (distance < ARRIVAL_THRESHOLD) {
-        // Do not snap here yet, let the main loop handle final snap
-        return true;
-    }
-
-    direction.normalize();
-
-    // Rotate towards target
-    if (direction.lengthSq() > 0.001) {
-        const targetAngle = Math.atan2(direction.x, direction.z);
-        let angleDiff = targetAngle - mesh.rotation.y;
-        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-        mesh.rotation.y += angleDiff * ROTATION_SPEED * delta;
-    }
-
-    // Move towards target
-    const moveDistance = Math.min(MOVE_SPEED * delta, distance);
-    mesh.position.x += direction.x * moveDistance;
-    mesh.position.z += direction.z * moveDistance;
-    mesh.position.y = vehicleHeight / 2;
-
-    return false;
 }
 
 export function VehicleBox({ data }: VehicleBoxProps) {
@@ -62,18 +23,11 @@ export function VehicleBox({ data }: VehicleBoxProps) {
     const updateVehiclePosition = useTrafficStore((s) => s.updateVehiclePosition);
     const removeVehicle = useTrafficStore((s) => s.removeVehicle);
 
-    // Vehicle dimensions
+    // Vehicle dimensions from centralized config
     const dimensions: [number, number, number] = useMemo(() => {
-        switch (data.type) {
-            case 1: return [2, 1, 4];
-            case 2: return [2.2, 1.5, 5];
-            case 3: return [2.5, 2, 8];
-            case 4: return [2, 1.2, 4.5];
-            case 5: return [2.5, 1.8, 6];
-            case 6: return [3, 2.5, 10];
-            case 7: return [0.8, 1, 2];
-            default: return [2, 1, 4];
-        }
+        const dims = VEHICLE_DIMENSIONS[data.type as keyof typeof VEHICLE_DIMENSIONS]
+            || VEHICLE_DIMENSIONS.DEFAULT;
+        return [...dims] as [number, number, number];
     }, [data.type]);
 
     const vehicleHeight = dimensions[1];

@@ -10,7 +10,7 @@ interface VehicleViewProps {
     position: { x: number; z: number };
     modelUrl: string;
     modelScale: number;
-    modelRotation?: [number, number, number];
+    modelRotation?: [number, number, number] | readonly [number, number, number];
     modelTexture?: string;
     modelYOffset?: number;
 }

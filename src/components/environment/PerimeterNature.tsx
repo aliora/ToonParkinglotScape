@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box } from '@react-three/drei';
 import { AssetInstance } from '../AssetInstance';
-import { ASSETS, PATHS } from '../../config/constants';
+import { ASSETS, PATHS, DIMENSIONS } from '../../config/constants';
 
 interface Props {
     boundMinX: number;
@@ -129,7 +129,7 @@ export const PerimeterNature: React.FC<Props> = ({ boundMinX, boundMaxX, boundMi
         }
 
         // Left edge - Stone fences (skip entry road area)
-        const entryGap = 15; // Road width gap
+        const entryGap = DIMENSIONS.ENTRY_GAP; // Road width gap
         // Top part of left edge (above road)
         if (boundMinZ < -entryGap / 2) {
             placeStoneFenceEdge(boundMinX, boundMinZ, boundMinX, -entryGap / 2);

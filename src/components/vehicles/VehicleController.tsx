@@ -3,6 +3,7 @@ import { Group } from 'three';
 import type { VehicleInstance } from '../../stores/useTrafficStore';
 import { useVehicleMovement } from '../../hooks/useVehicleMovement';
 import { VehicleView } from './VehicleView';
+import { VEHICLE_DIMENSIONS } from '../../config/constants';
 
 interface VehicleControllerProps {
     data: VehicleInstance;
@@ -11,15 +12,11 @@ interface VehicleControllerProps {
 export function VehicleController({ data }: VehicleControllerProps) {
     const meshRef = useRef<Group>(null);
 
-    // Vehicle dimensions logic
+    // Vehicle dimensions from centralized config
     const dimensions: [number, number, number] = useMemo(() => {
-        switch (data.type) {
-            case 1: return [2, 1, 4];
-            case 2: return [2.2, 1.5, 5];
-            case 3: return [2.5, 2, 8];
-            case 5: return [2.5, 1.8, 6];
-            default: return [2, 1, 4];
-        }
+        const dims = VEHICLE_DIMENSIONS[data.type as keyof typeof VEHICLE_DIMENSIONS]
+            || VEHICLE_DIMENSIONS.DEFAULT;
+        return [...dims] as [number, number, number];
     }, [data.type]);
 
     const vehicleHeight = dimensions[1];

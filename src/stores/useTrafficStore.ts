@@ -3,11 +3,10 @@ import { Vector3 } from 'three';
 import type { IVehicleData } from '../types/VehicleTypes';
 import { VehicleType } from '../types/VehicleTypes';
 import { createRandomVehicle } from '../utils/VehicleFactory';
-import { DIMENSIONS, TRAFFIC_CONFIG } from '../config/constants';
+import { DIMENSIONS, TRAFFIC_CONFIG, QUEUE_CONFIG } from '../config/constants';
 
-// --- CONFIGURATION CONSTANTS ---
-const MAX_VISIBLE_ENTRY_QUEUE = 10;
-const MAX_VISIBLE_EXIT_QUEUE = 10;
+// --- CONFIGURATION CONSTANTS (from centralized config) ---
+const { MAX_VISIBLE_ENTRY_QUEUE, MAX_VISIBLE_EXIT_QUEUE, JUNCTION_POINT_X } = QUEUE_CONFIG;
 
 // Lane Configuration
 // Entry Lane: Top lane - LHT (swapped)
@@ -16,7 +15,6 @@ const ENTRY_LANE_Z = -TRAFFIC_CONFIG.LANE_OFFSET;
 const EXIT_LANE_Z = TRAFFIC_CONFIG.LANE_OFFSET;
 
 const SPAWN_POINT = new Vector3(TRAFFIC_CONFIG.SPAWN_X, 0, ENTRY_LANE_Z);
-const JUNCTION_POINT_X = -5;
 
 // --- TYPES & INTERFACES ---
 
@@ -151,7 +149,7 @@ function generateExitWaypoints(spot: ParkingSpot): Vector3[] {
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, spot.laneZ));
     // Use EXIT LANE for return
     waypoints.push(new Vector3(JUNCTION_POINT_X, 0, EXIT_LANE_Z));
-    waypoints.push(new Vector3(-50, 0, EXIT_LANE_Z)); // Exit point
+    waypoints.push(new Vector3(TRAFFIC_CONFIG.EXIT_POINT_X, 0, EXIT_LANE_Z)); // Exit point
 
     return waypoints;
 }

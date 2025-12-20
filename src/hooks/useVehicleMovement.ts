@@ -8,6 +8,7 @@ import {
     PARKING_APPROACH_DISTANCE,
     PARKING_LERP_SPEED
 } from '../utils/vehicleMovementUtils';
+import { TRAFFIC_CONFIG, QUEUE_CONFIG, ROTATIONS } from '../config/constants';
 
 interface UseVehicleMovementProps {
     data: VehicleInstance;
@@ -15,12 +16,9 @@ interface UseVehicleMovementProps {
     meshRef: React.RefObject<Group | Mesh | null>;
 }
 
-import { TRAFFIC_CONFIG } from '../config/constants';
-
-// Gate X position is around -14. (Should ideally come from config, but keeping it local for now if matches config)
-// Or use TRAFFIC_CONFIG.BARRIER_X if available
+// Gate configuration from centralized constants
+const { GATE_STOP_DISTANCE, COLLISION_TIMEOUT, GATE_WAIT_TIMEOUT, COLLISION_CHECK_DISTANCE, COLLISION_STOP_DISTANCE, LANE_TOLERANCE, LANE_TOLERANCE_WIDE } = QUEUE_CONFIG;
 const GATE_X_POS = TRAFFIC_CONFIG.BARRIER_X;
-const GATE_STOP_DISTANCE = 7.5; // Stop this far before
 
 // Lane Configuration (Swapped)
 const ENTRY_LANE_Z = -TRAFFIC_CONFIG.LANE_OFFSET;
@@ -96,7 +94,7 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
         const isEntry = !data.isExiting;
         const myLaneZ = isEntry ? ENTRY_LANE_Z : EXIT_LANE_Z;
 
-        const onMainLane = Math.abs(currentPos.z - myLaneZ) < 1.0;
+        const onMainLane = Math.abs(currentPos.z - myLaneZ) < LANE_TOLERANCE;
 
         if (onMainLane) {
             let closestDist = 999;
@@ -108,30 +106,30 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
 
                 const otherPos = other.currentPosition;
 
-                if (Math.abs(otherPos.z - myLaneZ) > 1.5) return;
+                if (Math.abs(otherPos.z - myLaneZ) > LANE_TOLERANCE_WIDE) return;
 
                 if (isEntry) {
-                    if (otherPos.x > currentPos.x && otherPos.x < currentPos.x + 8) {
+                    if (otherPos.x > currentPos.x && otherPos.x < currentPos.x + COLLISION_CHECK_DISTANCE) {
                         const d = otherPos.x - currentPos.x;
                         if (d < closestDist) closestDist = d;
                     }
                 } else {
-                    if (otherPos.x < currentPos.x && otherPos.x > currentPos.x - 8) {
+                    if (otherPos.x < currentPos.x && otherPos.x > currentPos.x - COLLISION_CHECK_DISTANCE) {
                         const d = currentPos.x - otherPos.x;
                         if (d < closestDist) closestDist = d;
                     }
                 }
             });
 
-            if (closestDist < 5.5) {
+            if (closestDist < COLLISION_STOP_DISTANCE) {
                 blockedByCar = true;
             }
         }
 
         if (blockedByCar) {
             collisionWaitTimer.current += delta;
-            if (collisionWaitTimer.current > 25.0) {
-                console.warn(`[Vehicle ${data.id}] Blocked > 25s. FORCING MOVE (Ignoring Collision)`);
+            if (collisionWaitTimer.current > COLLISION_TIMEOUT) {
+                console.warn(`[Vehicle ${data.id}] Blocked > ${COLLISION_TIMEOUT}s. FORCING MOVE (Ignoring Collision)`);
                 collisionWaitTimer.current = 0;
                 // Proceed even if blocked to clear jam
             } else {
@@ -180,8 +178,8 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                         const granted = requestEntryGateAccess(data.id);
                         if (!granted) {
                             gateWaitTimer.current += delta;
-                            if (gateWaitTimer.current > 25.0) {
-                                console.warn(`[Vehicle ${data.id}] Stuck requesting ENTRY > 25s. Retrying...`);
+                            if (gateWaitTimer.current > GATE_WAIT_TIMEOUT) {
+                                console.warn(`[Vehicle ${data.id}] Stuck requesting ENTRY > ${GATE_WAIT_TIMEOUT}s. Retrying...`);
                                 requestEntryGateAccess(data.id);
                                 gateWaitTimer.current = 0;
                             }
@@ -191,8 +189,8 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                     if (entryGateState === GateState.OPEN) canProceed = true;
                     else {
                         gateWaitTimer.current += delta;
-                        if (gateWaitTimer.current > 25.0) {
-                            console.warn(`[Vehicle ${data.id}] Waiting for ENTRY OPEN > 25s. Retrying...`);
+                        if (gateWaitTimer.current > GATE_WAIT_TIMEOUT) {
+                            console.warn(`[Vehicle ${data.id}] Waiting for ENTRY OPEN > ${GATE_WAIT_TIMEOUT}s. Retrying...`);
                             requestEntryGateAccess(data.id);
                             gateWaitTimer.current = 0;
                         }
@@ -205,8 +203,8 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                         const granted = requestExitGateAccess(data.id);
                         if (!granted) {
                             gateWaitTimer.current += delta;
-                            if (gateWaitTimer.current > 25.0) {
-                                console.warn(`[Vehicle ${data.id}] Stuck requesting EXIT > 25s. Retrying...`);
+                            if (gateWaitTimer.current > GATE_WAIT_TIMEOUT) {
+                                console.warn(`[Vehicle ${data.id}] Stuck requesting EXIT > ${GATE_WAIT_TIMEOUT}s. Retrying...`);
                                 requestExitGateAccess(data.id);
                                 gateWaitTimer.current = 0;
                             }
@@ -216,8 +214,8 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                     if (exitGateState === GateState.OPEN) canProceed = true;
                     else {
                         gateWaitTimer.current += delta;
-                        if (gateWaitTimer.current > 25.0) {
-                            console.warn(`[Vehicle ${data.id}] Waiting for EXIT OPEN > 25s. Retrying...`);
+                        if (gateWaitTimer.current > GATE_WAIT_TIMEOUT) {
+                            console.warn(`[Vehicle ${data.id}] Waiting for EXIT OPEN > ${GATE_WAIT_TIMEOUT}s. Retrying...`);
                             requestExitGateAccess(data.id);
                             gateWaitTimer.current = 0;
                         }
@@ -270,8 +268,8 @@ export function useVehicleMovement({ data, vehicleHeight, meshRef }: UseVehicleM
                     mesh.position.lerp(new Vector3(target.x, vehicleHeight / 2, target.z), delta * PARKING_LERP_SPEED);
 
                     let angleDiff = data.targetRotation - mesh.rotation.y;
-                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    while (angleDiff > Math.PI) angleDiff -= ROTATIONS.TWO_PI;
+                    while (angleDiff < -Math.PI) angleDiff += ROTATIONS.TWO_PI;
                     mesh.rotation.y += angleDiff * delta * PARKING_LERP_SPEED;
 
                     const closeEnough = distToTarget < 0.05 && Math.abs(angleDiff) < 0.05;

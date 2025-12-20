@@ -9,8 +9,8 @@ import { addWindTarget, removeWindTarget } from '../utils/WindTargets';
 
 interface AssetInstanceProps {
     url: string;
-    position: [number, number, number];
-    rotation?: [number, number, number];
+    position: [number, number, number] | readonly [number, number, number];
+    rotation?: [number, number, number] | readonly [number, number, number];
     scale?: number;
     texturePath?: string;
     preserveMaterials?: boolean;

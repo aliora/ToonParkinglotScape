@@ -1,11 +1,14 @@
-import { Mesh, Vector3, Object3D } from 'three';
+import { Vector3, Object3D } from 'three';
+import { VEHICLE_MOVEMENT } from '../config/constants';
 
-// Constants
-export const MOVE_SPEED = 10;
-export const ROTATION_SPEED = 4;
-export const ARRIVAL_THRESHOLD = 0.1;
-export const PARKING_APPROACH_DISTANCE = 3.0;
-export const PARKING_LERP_SPEED = 3.0;
+// Re-export from centralized constants for backward compatibility
+export const {
+    MOVE_SPEED,
+    ROTATION_SPEED,
+    ARRIVAL_THRESHOLD,
+    PARKING_APPROACH_DISTANCE,
+    PARKING_LERP_SPEED,
+} = VEHICLE_MOVEMENT;
 
 // Helper: Move mesh towards target, returns true if arrived
 export function moveTowardsTarget(

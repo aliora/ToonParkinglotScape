@@ -1,180 +1,256 @@
-export const DIMENSIONS = {
+import { VehicleType } from '../types/VehicleTypes';
+
+// ============================================================================
+// FROZEN CONFIGURATION OBJECTS - Performance Optimized
+// Using Object.freeze() prevents runtime modifications and enables V8 optimizations
+// ============================================================================
+
+/**
+ * Parking lot dimension constants
+ */
+export const DIMENSIONS = Object.freeze({
     SLOT_WIDTH: 3,
     SLOT_DEPTH: 6,
     LANE_GAP: 8,
     MAX_ROWS: 4,
     PREFERRED_COLS: 5,
-    GAP_SIZE: 8, // Gap width between blocks of 5
+    GAP_SIZE: 8,
     BUFFER: 10,
     BUILDING_GAP: 20,
     STREET_OFFSET: 30,
-    PARKING_EXCLUSION_BUFFER: 5, // No random objects spawn within this distance of parking area
-    BUILDING_EXCLUSION_BUFFER: 10, // Buffer distance from buildings
-};
+    PARKING_EXCLUSION_BUFFER: 5,
+    BUILDING_EXCLUSION_BUFFER: 10,
+    ENTRY_GAP: 15, // Road width gap for perimeter nature
+} as const);
 
-import { VehicleType } from '../types/VehicleTypes';
+/**
+ * Vehicle movement physics constants
+ */
+export const VEHICLE_MOVEMENT = Object.freeze({
+    MOVE_SPEED: 10,
+    ROTATION_SPEED: 4,
+    ARRIVAL_THRESHOLD: 0.1,
+    PARKING_APPROACH_DISTANCE: 3.0,
+    PARKING_LERP_SPEED: 3.0,
+} as const);
 
-export const VEHICLE_MODELS: Record<VehicleType, { model: string; scale: number; rotation?: [number, number, number]; yOffset?: number }[]> = {
-    [VehicleType.CAR]: [
-        { model: 'Hatchback.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Muscle.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Muscle_2.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Roadster.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'SUV.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Sedan.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Sports.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Taxi.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 }
-    ],
-    [VehicleType.MINIBUS]: [
-        { model: 'Van.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 },
-        { model: 'Pickup.fbx', scale: 0.6, rotation: [0, 0, 0], yOffset: 0 }
-    ],
-    [VehicleType.BUS]: [
-        { model: 'Bus.fbx', scale: 0.5, rotation: [0, 0, 0], yOffset: 0 }
-    ],
-    [VehicleType.TRUCK]: [
-        { model: 'Truck.fbx', scale: 0.5, rotation: [0, 0, 0], yOffset: 0 }
-    ]
-};
+/**
+ * Traffic queue and gate configuration
+ */
+export const QUEUE_CONFIG = Object.freeze({
+    MAX_VISIBLE_ENTRY_QUEUE: 10,
+    MAX_VISIBLE_EXIT_QUEUE: 10,
+    GATE_STOP_DISTANCE: 7.5,
+    JUNCTION_POINT_X: -5,
+    COLLISION_TIMEOUT: 25.0, // Seconds before forcing movement
+    GATE_WAIT_TIMEOUT: 25.0, // Seconds before retrying gate access
+    COLLISION_CHECK_DISTANCE: 8, // Distance to check for blocking vehicles
+    COLLISION_STOP_DISTANCE: 5.5, // Distance at which to stop for blocking vehicle
+    LANE_TOLERANCE: 1.0, // Z tolerance for same-lane detection
+    LANE_TOLERANCE_WIDE: 1.5, // Wider tolerance for collision detection
+} as const);
 
-export const COLORS = {
+/**
+ * Vehicle dimensions by type [width, height, length]
+ * Type 1: CAR, 2: MINIBUS, 3: BUS, 5: TRUCK
+ */
+export const VEHICLE_DIMENSIONS = Object.freeze({
+    [VehicleType.CAR]: [2, 1, 4] as const,
+    [VehicleType.MINIBUS]: [2.2, 1.5, 5] as const,
+    [VehicleType.BUS]: [2.5, 2, 8] as const,
+    [VehicleType.TRUCK]: [2.5, 1.8, 6] as const,
+    // Legacy fallback dimensions
+    4: [2, 1.2, 4.5] as const,  // Motorcycle (if exists)
+    6: [3, 2.5, 10] as const,    // Large truck
+    7: [0.8, 1, 2] as const,     // Small vehicle
+    DEFAULT: [2, 1, 4] as const,
+} as const);
+
+/**
+ * Vehicle model configurations
+ */
+export const VEHICLE_MODELS: Readonly<Record<VehicleType, readonly { readonly model: string; readonly scale: number; readonly rotation?: readonly [number, number, number]; readonly yOffset?: number }[]>> = Object.freeze({
+    [VehicleType.CAR]: Object.freeze([
+        Object.freeze({ model: 'Hatchback.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Muscle.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Muscle_2.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Roadster.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'SUV.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Sedan.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Sports.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Taxi.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+    [VehicleType.MINIBUS]: Object.freeze([
+        Object.freeze({ model: 'Van.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+        Object.freeze({ model: 'Pickup.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+    [VehicleType.BUS]: Object.freeze([
+        Object.freeze({ model: 'Bus.fbx', scale: 0.5, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+    [VehicleType.TRUCK]: Object.freeze([
+        Object.freeze({ model: 'Truck.fbx', scale: 0.5, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+});
+
+/**
+ * Color constants
+ */
+export const COLORS = Object.freeze({
     GROUND: '#333333',
     LINE: '#FFFFFF',
     GRASS: '#4caf50',
-};
+} as const);
 
-export const PATHS = {
+/**
+ * Asset path constants
+ */
+export const PATHS = Object.freeze({
     BASE: '/CityEnvironment/',
     VEHICLES: '/Vehicles/',
     TEXTURE_DEFAULT: '/Texture/tex.png',
     TEXTURE_NATURE: '/Texture/TXT_LowPolyEssentials.png',
-};
+} as const);
 
-// Parking line fence configuration
-export const PARKING_FENCE = {
+/**
+ * Parking fence configuration
+ */
+export const PARKING_FENCE = Object.freeze({
     model: 'Metal_rod_fence.fbx',
     scale: 1,
-    yOffsetMultiplier: 1,    // Y position = (base * multiplier) + offset
-    yOffsetAdd: -0.15,           // Additional Y offset
-    rotationVertical: [1, Math.PI / 2, 0] as [number, number, number],
-    rotationHorizontal: [0, 0, 0] as [number, number, number],
-};
+    yOffsetMultiplier: 1,
+    yOffsetAdd: -0.15,
+    rotationVertical: [1, Math.PI / 2, 0] as const,
+    rotationHorizontal: [0, 0, 0] as const,
+} as const);
 
-export const ASSETS = {
-    buildings: Array.from({ length: 2 }, (_, i) => `Building_${i + 1}.fbx`),
-    nature: {
-        trees: ['Tree2.fbx', 'Tree.fbx', 'dead_tree.fbx'],
-        treeConfig: {
-            globalScaleMultiplier: 0.1,  // Multiply all scatter scales by this value
-            scale: 0.3,                // Base scale
-            scaleVariation: 0.4,        // Random scale variation (0-1)
-            rotation: [0, 0, 0] as [number, number, number],
-            randomRotation: true,       // Enable random Y rotation
-            rotationVariation: 1.0,     // Full 360° random rotation
-            yOffset: 0,                 // Y offset
-        },
-        rocks: [
+/**
+ * Traffic lane and barrier configuration
+ */
+export const TRAFFIC_CONFIG = Object.freeze({
+    ROAD_WIDTH: 22,
+    LANE_OFFSET: 4.8,
+    BARRIER_X: -13.6,
+    BARRIER_Z_BASE: 8,
+    BARRIER_ARM_LENGTH: 6.4,
+    SPAWN_X: -60,
+    EXIT_POINT_X: -50, // X position where vehicles exit the scene
+} as const);
+
+// Pre-computed rotation values to avoid runtime Math operations
+export const ROTATIONS = Object.freeze({
+    HALF_PI: Math.PI / 2,
+    PI: Math.PI,
+    TWO_PI: Math.PI * 2,
+    NEG_HALF_PI: -Math.PI / 2,
+} as const);
+
+/**
+ * Nature and environment assets configuration
+ */
+export const ASSETS = Object.freeze({
+    buildings: Object.freeze(['Building_1.fbx', 'Building_2.fbx']),
+    nature: Object.freeze({
+        trees: Object.freeze(['Tree2.fbx', 'Tree.fbx', 'dead_tree.fbx']),
+        treeConfig: Object.freeze({
+            globalScaleMultiplier: 0.1,
+            scale: 0.3,
+            scaleVariation: 0.4,
+            rotation: [0, 0, 0] as const,
+            randomRotation: true,
+            rotationVariation: 1.0,
+            yOffset: 0,
+        }),
+        rocks: Object.freeze([
             'Rock_02.fbx', 'Rock_04_1__5_.fbx', 'Rock_04.fbx', 'Rock_05.fbx', 'bush.fbx'
-        ],
-        bushes: ['bush.fbx'],
-        bushConfig: {
+        ]),
+        bushes: Object.freeze(['bush.fbx']),
+        bushConfig: Object.freeze({
             scale: 0.0008,
-            scaleVariation: 0.3,    // Random scale variation (0-1)
-            rotation: [0, -190, 0] as [number, number, number],
-            xOffset: 4.5,             // X location offset
+            scaleVariation: 0.3,
+            rotation: [0, -190, 0] as const,
+            xOffset: 4.5,
             yOffset: -0.5,
-            zOffset: 0,             // Z location offset
-            spawnStartOffset: 0.5,    // Spawn start position offset
-            spawnEndOffset: 0,      // Spawn end position offset
-            density: 2,             // Distance between bushes
-            gapVariation: 0.3,      // Random gap variation between bushes
-            jitterX: 1,             // Random X offset range
-            jitterZ: 1,             // Random Z offset range
-            randomRotation: true,   // Enable random Y rotation
-            rotationVariation: 0.15, // Random rotation amount (0-1, where 1 = full 360°)
-        },
-        stoneFence: {
+            zOffset: 0,
+            spawnStartOffset: 0.5,
+            spawnEndOffset: 0,
+            density: 2,
+            gapVariation: 0.3,
+            jitterX: 1,
+            jitterZ: 1,
+            randomRotation: true,
+            rotationVariation: 0.15,
+        }),
+        stoneFence: Object.freeze({
             model: 'Stone_fence.fbx',
             scale: 1,
-            rotation: [0, -190, 0] as [number, number, number],
+            rotation: [0, -190, 0] as const,
             yOffset: 0,
-            spawnOffset: 0.5,         // Spawn start position offset
-            density: 2,             // Distance between fences
-            gapVariation: 0.2,      // Random gap variation (0-1). Adds random spacing between fences
+            spawnOffset: 0.5,
+            density: 2,
+            gapVariation: 0.2,
             preserveMaterials: true,
-            baseColor: '#c2a47fff',   // Stone brown color
-        },
-        // Border config for top/bottom edges - single continuous line
-        parkingLotBorder: {
+            baseColor: '#c2a47fff',
+        }),
+        parkingLotBorder: Object.freeze({
             enabled: true,
-            boxHeight: 0.1,             // Line height (Y)
-            boxDepth: 0.3,              // Line depth (Z) - width auto-scales to parking lot
-            boxColor: '#c4c4c4ff',      // Line color
-            extraWidth: 5,              // Extra width to add to auto-calculated length
-            xOffset: 2.5,               // X position offset
-            yOffset: 0.1,               // Y offset (lift above ground)
-            zOffset: 0,                 // Z position offset
-        }
-    },
-    street: {
-        lights: ['Street_light.fbx'],
+            boxHeight: 0.1,
+            boxDepth: 0.3,
+            boxColor: '#c4c4c4ff',
+            extraWidth: 5,
+            xOffset: 2.5,
+            yOffset: 0.1,
+            zOffset: 0,
+        }),
+    }),
+    street: Object.freeze({
+        lights: Object.freeze(['Street_light.fbx']),
         lightScale: 0.035 * 30,
-        lightRotation: [0, -190, 0] as [number, number, number],
+        lightRotation: [0, -190, 0] as const,
         lightYOffset: 0,
         preserveMaterials: true,
-        baseColor: '#9e9e9eff',  // Material base color (hex)
-        cone: {
+        baseColor: '#9e9e9eff',
+        cone: Object.freeze({
             enabled: true,
-            color: '#fff368',   // Light yellow
-            opacity: 0.15,       // Transparent/Low opacity
-            height: 10,          // Beam length
-            radius: 4,          // Bottom radius
-            position: [0, 1.5, 3.5] as [number, number, number], // Start point (x, y, z)
-            rotation: [-0.5, 0, 0] as [number, number, number],
+            color: '#fff368',
+            opacity: 0.15,
+            height: 10,
+            radius: 4,
+            position: [0, 1.5, 3.5] as const,
+            rotation: [-0.5, 0, 0] as const,
             segments: 12,
-            radiusVariation: 0.5,   // Random variation in radius (+/-)
-            rotationVariation: 0.1, // Random variation in rotation (radians, +/-)
-        }
-    },
-    entry: {
-        signs: [], // Populated or empty based on availability
-    },
-    scatter: [
-        // Trees (with their own materials)
-        { url: 'Tree2.fbx', scale: 50, preserveMaterials: true },
-        { url: 'Tree.fbx', scale: 50, preserveMaterials: true },
-        { url: 'dead_tree.fbx', scale: 0.035, preserveMaterials: false },
-        // Rocks (use texture)
-        { url: 'Rock_05.fbx', scale: 0.02, preserveMaterials: false },
-        { url: 'Rock_04.fbx', scale: 0.015, preserveMaterials: false },
-        { url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false },
-        { url: 'Rock_02.fbx', scale: 0.015, preserveMaterials: false },
-    ],
-    scatterGroups: {
-        greenery: [
-            { url: 'Tree2.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 },
-            { url: 'Tree.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 },
-            { url: 'bush.fbx', scale: 0.008, preserveMaterials: false, type: 'bush', randomScaleMin: 0.7, randomScaleMax: 1.6, collisionRadius: 0.8 },
-        ],
-        dead: [
-            { url: 'dead_tree.fbx', scale: 0.02, preserveMaterials: false, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 1.5 },
-            { url: 'Rock_05.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 },
-            { url: 'Rock_04.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3.5 },
-            { url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 },
-            { url: 'Rock_02.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3 },
-        ]
-    },
-    clouds: [
+            radiusVariation: 0.5,
+            rotationVariation: 0.1,
+        }),
+    }),
+    entry: Object.freeze({
+        signs: Object.freeze([]),
+    }),
+    scatter: Object.freeze([
+        Object.freeze({ url: 'Tree2.fbx', scale: 50, preserveMaterials: true }),
+        Object.freeze({ url: 'Tree.fbx', scale: 50, preserveMaterials: true }),
+        Object.freeze({ url: 'dead_tree.fbx', scale: 0.035, preserveMaterials: false }),
+        Object.freeze({ url: 'Rock_05.fbx', scale: 0.02, preserveMaterials: false }),
+        Object.freeze({ url: 'Rock_04.fbx', scale: 0.015, preserveMaterials: false }),
+        Object.freeze({ url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false }),
+        Object.freeze({ url: 'Rock_02.fbx', scale: 0.015, preserveMaterials: false }),
+    ]),
+    scatterGroups: Object.freeze({
+        greenery: Object.freeze([
+            Object.freeze({ url: 'Tree2.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 }),
+            Object.freeze({ url: 'Tree.fbx', scale: 20, preserveMaterials: true, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 2 }),
+            Object.freeze({ url: 'bush.fbx', scale: 0.008, preserveMaterials: false, type: 'bush', randomScaleMin: 0.7, randomScaleMax: 1.6, collisionRadius: 0.8 }),
+        ]),
+        dead: Object.freeze([
+            Object.freeze({ url: 'dead_tree.fbx', scale: 0.02, preserveMaterials: false, type: 'tree', randomScaleMin: 0.8, randomScaleMax: 1, collisionRadius: 1.5 }),
+            Object.freeze({ url: 'Rock_05.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 }),
+            Object.freeze({ url: 'Rock_04.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3.5 }),
+            Object.freeze({ url: 'Rock_04_1__5_.fbx', scale: 0.02, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 4 }),
+            Object.freeze({ url: 'Rock_02.fbx', scale: 0.003, preserveMaterials: false, type: 'rock', randomScaleMin: 0.7, randomScaleMax: 1.5, collisionRadius: 3 }),
+        ]),
+    }),
+    clouds: Object.freeze([
         'Cloud_1.fbx',
         'Cloud_2.fbx',
         'Cloud_3.fbx'
-    ]
-};
-export const TRAFFIC_CONFIG = {
-    ROAD_WIDTH: 22,           // Total width of the two-lane road
-    LANE_OFFSET: 4.8,          // Distance from center (Z=0) to lane center (+/-)
-    BARRIER_X: -13.6,          // X position of the barriers
-    BARRIER_Z_BASE: 8,       // Distance from center (Z=0) to barrier base position (+/-)
-    BARRIER_ARM_LENGTH: 6.4, // Length of the barrier arm
-    SPAWN_X: -60,            // X position for spawning vehicles
-};
+    ]),
+});

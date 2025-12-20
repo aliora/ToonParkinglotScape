@@ -20,7 +20,7 @@ export interface IVehicleData {
     state: 'moving' | 'parked';
     modelUrl: string;
     modelScale: number;
-    modelRotation?: [number, number, number];
+    modelRotation?: [number, number, number] | readonly [number, number, number];
     modelTexture?: string;
     modelYOffset?: number;
 }

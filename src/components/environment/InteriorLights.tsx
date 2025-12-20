@@ -26,7 +26,7 @@ const StreetLight: React.FC<{
             cone.rotation[1] + coneVariation.rotation[1],
             cone.rotation[2] + coneVariation.rotation[2],
         ]
-        : cone.rotation;
+        : [...cone.rotation] as [number, number, number];
 
     const finalRadius = coneVariation ? cone.radius + coneVariation.radius : cone.radius;
 
