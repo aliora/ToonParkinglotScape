@@ -24,7 +24,11 @@ function EnvironmentPreloader() {
 const MemoizedParkingLot = memo(ParkingLot);
 const MemoizedVehicleManager = memo(VehicleManager);
 
-function Scene() {
+interface SceneProps {
+  showGizmo?: boolean;
+}
+
+function Scene({ showGizmo = true }: SceneProps) {
   // Environment Controls from Store
   const worldConfig = useTrafficStore(state => state.worldConfig);
   const { timeOfDay, capacity } = worldConfig;
@@ -88,26 +92,47 @@ function Scene() {
       />
       <Environment preset={lighting.envPreset} />
 
-      {/* XYZ Orientation Gizmo */}
-      <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
-        <GizmoViewport
-          axisColors={['#ff3653', '#0adb50', '#2c8fdf']}
-          labelColor="white"
-        />
-      </GizmoHelper>
+      {/* XYZ Orientation Gizmo - hidden in embedded mode */}
+      {showGizmo && (
+        <GizmoHelper alignment="bottom-right" margin={[80, 80]}>
+          <GizmoViewport
+            axisColors={['#ff3653', '#0adb50', '#2c8fdf']}
+            labelColor="white"
+          />
+        </GizmoHelper>
+      )}
     </>
   );
 }
 
-function App() {
+/**
+ * App Component Props
+ */
+interface AppProps {
+  /** True when running as embedded widget in Laravel/Filament */
+  isEmbedded?: boolean;
+  /** Show control panel UI */
+  showControls?: boolean;
+}
+
+/**
+ * Main App Component
+ * @param isEmbedded - When true, hides debug UI elements for cleaner embedding
+ * @param showControls - When true, shows the control panel
+ */
+function App({ isEmbedded = false, showControls = true }: AppProps) {
+  // In embedded mode, hide controls and gizmo unless explicitly enabled
+  const shouldShowControls = isEmbedded ? showControls : true;
+  const shouldShowGizmo = !isEmbedded;
+
   return (
     <VehicleHoverProvider>
       <div style={{ width: '100vw', height: '100vh' }}>
-        <ControlPanel />
+        {shouldShowControls && <ControlPanel />}
         <VehicleHoverPopup />
         <Canvas shadows camera={{ position: [-10, 30, 40], fov: 50 }}>
           <EnvironmentPreloader />
-          <Scene />
+          <Scene showGizmo={shouldShowGizmo} />
         </Canvas>
       </div>
     </VehicleHoverProvider>
@@ -115,3 +140,4 @@ function App() {
 }
 
 export default App;
+

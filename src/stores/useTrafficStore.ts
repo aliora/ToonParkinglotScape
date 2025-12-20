@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { Vector3 } from 'three';
-import type { IVehicleData } from '../types/VehicleTypes';
-import { VehicleType } from '../types/VehicleTypes';
-import { createRandomVehicle } from '../utils/VehicleFactory';
+import type { IVehicleData, ExternalVehicleData } from '../types/VehicleTypes';
+import { VehicleType, normalizeVehicleType } from '../types/VehicleTypes';
+import { createRandomVehicle, createVehicleFromExternal } from '../utils/VehicleFactory';
 import { DIMENSIONS, TRAFFIC_CONFIG, QUEUE_CONFIG } from '../config/constants';
 
 // --- CONFIGURATION CONSTANTS (from centralized config) ---
@@ -119,6 +119,25 @@ export interface TrafficState {
 
     // Internal Helper
     processQueues: () => void;
+
+    // --- EXTERNAL API FUNCTIONS ---
+    /** Add vehicle with animated entry (from external system) */
+    addExternalVehicle: (data: ExternalVehicleData) => void;
+    /** Initialize pre-parked vehicles instantly (no animation) */
+    initPreParkedVehicles: (vehicles: ExternalVehicleData[]) => void;
+    /** Trigger vehicle exit from external system */
+    triggerVehicleExit: (vehicleId: string) => void;
+    /** Get available spot count */
+    getAvailableSpotCount: () => number;
+
+    // --- EVENT CALLBACKS ---
+    eventCallbacks: {
+        onVehicleParked: ((data: ExternalVehicleData) => void)[];
+        onVehicleExited: ((vehicleId: string) => void)[];
+        onParkingFull: (() => void)[];
+    };
+    registerCallback: (event: 'onVehicleParked' | 'onVehicleExited' | 'onParkingFull', callback: Function) => () => void;
+    emitEvent: (event: 'onVehicleParked' | 'onVehicleExited' | 'onParkingFull', data?: any) => void;
 }
 
 // --- HELPER FUNCTIONS ---
@@ -463,5 +482,164 @@ export const useTrafficStore = create<TrafficState>((set, get) => ({
             currentExitGateVehicleId: null
         });
         get().processQueues();
-    }
+    },
+
+    // --- EVENT CALLBACKS ---
+    eventCallbacks: {
+        onVehicleParked: [],
+        onVehicleExited: [],
+        onParkingFull: [],
+    },
+
+    registerCallback: (event, callback) => {
+        const state = get();
+        (state.eventCallbacks[event] as Function[]).push(callback);
+        // Return unsubscribe function
+        return () => {
+            const callbacks = get().eventCallbacks[event] as Function[];
+            const index = callbacks.indexOf(callback);
+            if (index > -1) callbacks.splice(index, 1);
+        };
+    },
+
+    emitEvent: (event, data) => {
+        const callbacks = get().eventCallbacks[event] as Function[];
+        callbacks.forEach(cb => cb(data));
+    },
+
+    // --- EXTERNAL API FUNCTIONS ---
+
+    getAvailableSpotCount: () => {
+        return get().parkingSpots.filter(s => !s.occupied).length;
+    },
+
+    addExternalVehicle: (extData: ExternalVehicleData) => {
+        const state = get();
+        const normalizedType = normalizeVehicleType(extData.type);
+
+        const visibleEntryCount = state.vehicles.filter(v =>
+            !v.isExiting && v.state !== 'parked'
+        ).length;
+
+        const unocc = state.parkingSpots.filter(s => !s.occupied);
+        if (unocc.length === 0) {
+            console.warn('[External API] No spots available');
+            get().emitEvent('onParkingFull');
+            return;
+        }
+
+        // If queue is full, add to backlog
+        if (visibleEntryCount >= MAX_VISIBLE_ENTRY_QUEUE) {
+            console.log('[External API] Queue full, adding to backlog');
+            set(state => ({
+                virtualEntryBacklog: [...state.virtualEntryBacklog, {
+                    id: extData.id,
+                    type: normalizedType,
+                    requestTime: Date.now(),
+                    externalData: extData, // Store original data
+                }]
+            }));
+            return;
+        }
+
+        // Find nearest spot
+        let nearestSpot = unocc[0];
+        let minScore = Math.abs(nearestSpot.position.x) + Math.abs(nearestSpot.laneZ) * 0.5;
+        for (const spot of unocc) {
+            const score = spot.position.x + Math.abs(spot.laneZ) * 0.5;
+            if (score < minScore) {
+                minScore = score;
+                nearestSpot = spot;
+            }
+        }
+
+        const waypoints = generateWaypoints(nearestSpot);
+        const vehicleData = createVehicleFromExternal(extData);
+
+        const targetRotation = nearestSpot.isTopRow ? Math.PI : 0;
+        const vehicleInstance: VehicleInstance = {
+            ...vehicleData,
+            targetPosition: nearestSpot.position.clone(),
+            targetRotation,
+            spotId: nearestSpot.id,
+            startPosition: SPAWN_POINT.clone(),
+            currentPosition: SPAWN_POINT.clone(),
+            waypoints,
+            isExiting: false,
+            exitWaypoints: [],
+            state: 'moving'
+        };
+
+        console.log(`[External API] Spawning vehicle ${vehicleInstance.id} (plate: ${vehicleInstance.plate})`);
+
+        set({
+            parkingSpots: state.parkingSpots.map((spot) =>
+                spot.id === nearestSpot.id ? { ...spot, occupied: true } : spot
+            ),
+            vehicles: [...state.vehicles, vehicleInstance],
+        });
+    },
+
+    initPreParkedVehicles: (vehicles: ExternalVehicleData[]) => {
+        const state = get();
+        const availableSpots = state.parkingSpots.filter(s => !s.occupied);
+
+        const preParkedVehicles: VehicleInstance[] = [];
+        const updatedSpotIds: string[] = [];
+
+        vehicles.forEach((extVehicle, index) => {
+            if (index >= availableSpots.length) {
+                console.warn(`[External API] No spot available for pre-parked vehicle ${extVehicle.id}`);
+                return;
+            }
+
+            const spot = availableSpots[index];
+            const vehicleData = createVehicleFromExternal(extVehicle);
+            const targetRotation = spot.isTopRow ? Math.PI : 0;
+
+            // Create vehicle directly at parking position (no animation)
+            const vehicleInstance: VehicleInstance = {
+                ...vehicleData,
+                state: 'parked', // Already parked
+                targetPosition: spot.position.clone(),
+                targetRotation,
+                spotId: spot.id,
+                startPosition: spot.position.clone(),
+                currentPosition: spot.position.clone(),
+                waypoints: [], // Empty = no movement
+                isExiting: false,
+                exitWaypoints: [],
+            };
+
+            preParkedVehicles.push(vehicleInstance);
+            updatedSpotIds.push(spot.id);
+
+            console.log(`[External API] Pre-parked vehicle ${vehicleInstance.id} (plate: ${vehicleInstance.plate}) at spot ${spot.id}`);
+        });
+
+        set({
+            vehicles: [...state.vehicles, ...preParkedVehicles],
+            parkingSpots: state.parkingSpots.map(s =>
+                updatedSpotIds.includes(s.id) ? { ...s, occupied: true } : s
+            ),
+        });
+    },
+
+    triggerVehicleExit: (vehicleId: string) => {
+        const state = get();
+        const vehicle = state.vehicles.find(v => v.id === vehicleId);
+
+        if (!vehicle) {
+            console.warn(`[External API] Vehicle ${vehicleId} not found`);
+            return;
+        }
+
+        if (vehicle.state !== 'parked') {
+            console.warn(`[External API] Vehicle ${vehicleId} is not parked (state: ${vehicle.state})`);
+            return;
+        }
+
+        // Use existing startExitingVehicle logic
+        get().startExitingVehicle(vehicleId);
+    },
 }));

@@ -1,0 +1,27 @@
+{
+    "name": "polat/filament-parking-visualization",
+    "description": "3D Parking Lot Visualization for Laravel Filament",
+    "type": "library",
+    "version": "1.0.0",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "filament/filament": "^3.0",
+        "livewire/livewire": "^3.0",
+        "spatie/laravel-package-tools": "^1.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "Polat\\ParkingVisualization\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Polat\\ParkingVisualization\\ParkingVisualizationServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

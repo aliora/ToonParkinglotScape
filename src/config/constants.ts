@@ -53,22 +53,22 @@ export const QUEUE_CONFIG = Object.freeze({
 
 /**
  * Vehicle dimensions by type [width, height, length]
- * Type 1: CAR, 2: MINIBUS, 3: BUS, 5: TRUCK
+ * Type 1: CAR, 2: MINIBUS, 3: BUS, 4: PICKUP, 5: TRUCK, 6: HEAVYTRUCK, 7: MOTORCYCLE
  */
 export const VEHICLE_DIMENSIONS = Object.freeze({
     [VehicleType.CAR]: [2, 1, 4] as const,
     [VehicleType.MINIBUS]: [2.2, 1.5, 5] as const,
     [VehicleType.BUS]: [2.5, 2, 8] as const,
+    [VehicleType.PICKUP]: [2.2, 1.3, 5] as const,
     [VehicleType.TRUCK]: [2.5, 1.8, 6] as const,
-    // Legacy fallback dimensions
-    4: [2, 1.2, 4.5] as const,  // Motorcycle (if exists)
-    6: [3, 2.5, 10] as const,    // Large truck
-    7: [0.8, 1, 2] as const,     // Small vehicle
+    [VehicleType.HEAVYTRUCK]: [3, 2.5, 10] as const,
+    [VehicleType.MOTORCYCLE]: [0.8, 1, 2] as const,
     DEFAULT: [2, 1, 4] as const,
 } as const);
 
 /**
  * Vehicle model configurations
+ * Types without specific models fallback to CAR models
  */
 export const VEHICLE_MODELS: Readonly<Record<VehicleType, readonly { readonly model: string; readonly scale: number; readonly rotation?: readonly [number, number, number]; readonly yOffset?: number }[]>> = Object.freeze({
     [VehicleType.CAR]: Object.freeze([
@@ -83,13 +83,23 @@ export const VEHICLE_MODELS: Readonly<Record<VehicleType, readonly { readonly mo
     ]),
     [VehicleType.MINIBUS]: Object.freeze([
         Object.freeze({ model: 'Van.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
-        Object.freeze({ model: 'Pickup.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
     ]),
     [VehicleType.BUS]: Object.freeze([
         Object.freeze({ model: 'Bus.fbx', scale: 0.5, rotation: [0, 0, 0] as const, yOffset: 0 }),
     ]),
+    [VehicleType.PICKUP]: Object.freeze([
+        Object.freeze({ model: 'Pickup.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
     [VehicleType.TRUCK]: Object.freeze([
         Object.freeze({ model: 'Truck.fbx', scale: 0.5, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+    // HEAVYTRUCK - Uses Truck model as fallback
+    [VehicleType.HEAVYTRUCK]: Object.freeze([
+        Object.freeze({ model: 'Truck.fbx', scale: 0.6, rotation: [0, 0, 0] as const, yOffset: 0 }),
+    ]),
+    // MOTORCYCLE - Uses smallest car model as fallback (no motorcycle model available)
+    [VehicleType.MOTORCYCLE]: Object.freeze([
+        Object.freeze({ model: 'Hatchback.fbx', scale: 0.4, rotation: [0, 0, 0] as const, yOffset: 0 }),
     ]),
 });
 
